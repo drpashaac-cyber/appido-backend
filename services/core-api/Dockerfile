@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 # ---- build: install deps, compile the monorepo, then drop dev deps ----
-FROM node:20-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 COPY . .
 RUN npm install && npm run build && npm prune --omit=dev
 
 # ---- run: slim, non-root, signal-safe ----
-FROM node:20-slim AS run
+FROM node:26-slim AS run
 ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y --no-install-recommends dumb-init \
   && rm -rf /var/lib/apt/lists/*
