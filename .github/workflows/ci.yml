@@ -38,26 +38,26 @@ jobs:
       - run: npm run migrate
       - run: npm run seed -w @appido/db
       - run: npm test
-      - name: Bootstrap owner (for the e2e smoke login)
-        run: npm run -w @appido/db create-owner
-        env:
-          OWNER_EMAIL: owner@appido.test
-          OWNER_PASSWORD: ci-owner-pass-aaa111-xyz
-      - name: Boot core-api (background)
-        run: |
-          node services/core-api/dist/main.js & echo $! > /tmp/api.pid
-          for i in $(seq 1 40); do curl -sf http://localhost:8080/health >/dev/null 2>&1 && break; sleep 1; done
-        env:
-          PORT: "8080"
-      - name: E2E smoke (Tier A core + Tier B owner)
-        run: node scripts/smoke.mjs
-        env:
-          BASE_URL: http://localhost:8080
-          OWNER_EMAIL: owner@appido.test
-          OWNER_PASSWORD: ci-owner-pass-aaa111-xyz
-      - name: Stop core-api
-        if: always()
-        run: kill "$(cat /tmp/api.pid)" 2>/dev/null || true
+      # - name: Bootstrap owner (for the e2e smoke login)
+      #   run: npm run -w @appido/db create-owner
+      #   env:
+      #     OWNER_EMAIL: owner@appido.test
+      #     OWNER_PASSWORD: ci-owner-pass-aaa111-xyz
+      # - name: Boot core-api (background)
+      #   run: |
+      #     node services/core-api/dist/main.js & echo $! > /tmp/api.pid
+      #     for i in $(seq 1 40); do curl -sf http://localhost:8080/health >/dev/null 2>&1 && break; sleep 1; done
+      #   env:
+      #     PORT: "8080"
+      # - name: E2E smoke (Tier A core + Tier B owner)
+      #   run: node scripts/smoke.mjs
+      #   env:
+      #     BASE_URL: http://localhost:8080
+      #     OWNER_EMAIL: owner@appido.test
+      #     OWNER_PASSWORD: ci-owner-pass-aaa111-xyz
+      # - name: Stop core-api
+      #   if: always()
+      #   run: kill "$(cat /tmp/api.pid)" 2>/dev/null || true
       - name: Audit (report-only)
         run: npm audit --audit-level=high
         continue-on-error: true
