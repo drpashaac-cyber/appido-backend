@@ -2,18 +2,10 @@
   "name": "appido-backend",
   "private": true,
   "version": "0.1.0",
-  "description": "APPIDO unified backend — core-api, workers, shared packages.",
+  "description": "APPIDO unified backend \u2014 core-api, workers, shared packages.",
   "workspaces": [
-    "packages/types",
-    "packages/config",
-    "packages/db",
-    "packages/authz",
-    "packages/crypto",
-    "packages/ai",
-    "packages/analytics",
-    "packages/payments",
-    "packages/telegram",
-    "services/core-api"
+    "packages/*",
+    "services/*"
   ],
   "engines": {
     "node": ">=20"
@@ -29,18 +21,12 @@
     "seed": "npm run seed -w @appido/db",
     "smoke": "node scripts/smoke.mjs",
     "preflight": "turbo run typecheck && turbo run build",
-    "create-owner": "npm run create-owner -w @appido/db",
-    "start": "node services/core-api/dist/main.js"
+    "create-owner": "npm run create-owner -w @appido/db"
   },
   "devDependencies": {
-    "@types/node": "^20.17.0",
-    "ts-node": "^10.9.2",
     "turbo": "^2.3.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "@types/node": "^20.17.0"
   },
-  "packageManager": "npm@10.8.2",
-  "overrides": {
-    "ioredis": "5.11.1",
-    "bullmq": "5.34.3"
-  }
+  "packageManager": "npm@10.8.2"
 }
