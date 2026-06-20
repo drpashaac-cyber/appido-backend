@@ -4,7 +4,15 @@
   "version": "0.1.0",
   "description": "APPIDO unified backend — core-api, workers, shared packages.",
   "workspaces": [
-    "packages/*",
+    "packages/types",
+    "packages/config",
+    "packages/db",
+    "packages/authz",
+    "packages/crypto",
+    "packages/ai",
+    "packages/analytics",
+    "packages/payments",
+    "packages/telegram",
     "services/core-api"
   ],
   "engines": {
