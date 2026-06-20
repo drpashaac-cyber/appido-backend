@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY packages/*/package*.json packages/*/
 COPY services/*/package*.json services/*/
-RUN npm ci
+RUN npm install --workspaces
 
 COPY . .
 RUN npm run build
