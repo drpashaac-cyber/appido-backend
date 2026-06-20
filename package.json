@@ -1,0 +1,32 @@
+{
+  "name": "appido-backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "APPIDO unified backend \u2014 core-api, workers, shared packages.",
+  "workspaces": [
+    "packages/*",
+    "services/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "migrate": "npm run migrate -w @appido/db",
+    "compose:up": "docker compose up --build",
+    "seed": "npm run seed -w @appido/db",
+    "smoke": "node scripts/smoke.mjs",
+    "preflight": "turbo run typecheck && turbo run build",
+    "create-owner": "npm run create-owner -w @appido/db"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^20.17.0"
+  },
+  "packageManager": "npm@10.8.2"
+}

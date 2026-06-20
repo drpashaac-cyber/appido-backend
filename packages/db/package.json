@@ -1,0 +1,27 @@
+{
+  "name": "@appido/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "node dist/migrate.js",
+    "generate": "drizzle-kit generate",
+    "test": "echo \"(db) no tests yet\" && exit 0",
+    "lint": "echo ok",
+    "seed": "node dist/seed.js",
+    "create-owner": "node dist/create-owner.js"
+  },
+  "dependencies": {
+    "@appido/config": "*",
+    "drizzle-orm": "^0.38.0",
+    "pg": "^8.13.0",
+    "@node-rs/argon2": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0",
+    "drizzle-kit": "^0.30.0"
+  }
+}

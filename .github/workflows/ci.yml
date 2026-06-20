@@ -1,0 +1,63 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: appido, POSTGRES_PASSWORD: appido, POSTGRES_DB: appido }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U appido" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://appido:appido@localhost:5432/appido
+      APP_DATABASE_URL: postgresql://appido_app:appido_app@localhost:5432/appido
+      REDIS_URL: redis://localhost:6379
+      SECRETS_MASTER_KEY: ci-master-key-32-bytes-minimum-xx
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: ".nvmrc", cache: "npm" }
+      - run: npm install
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run migrate
+      - run: npm run seed -w @appido/db
+      - run: npm test
+      - name: Bootstrap owner (for the e2e smoke login)
+        run: npm run -w @appido/db create-owner
+        env:
+          OWNER_EMAIL: owner@appido.test
+          OWNER_PASSWORD: ci-owner-pass-aaa111-xyz
+      - name: Boot core-api (background)
+        run: |
+          node services/core-api/dist/main.js & echo $! > /tmp/api.pid
+          for i in $(seq 1 40); do curl -sf http://localhost:8080/health >/dev/null 2>&1 && break; sleep 1; done
+        env:
+          PORT: "8080"
+      - name: E2E smoke (Tier A core + Tier B owner)
+        run: node scripts/smoke.mjs
+        env:
+          BASE_URL: http://localhost:8080
+          OWNER_EMAIL: owner@appido.test
+          OWNER_PASSWORD: ci-owner-pass-aaa111-xyz
+      - name: Stop core-api
+        if: always()
+        run: kill "$(cat /tmp/api.pid)" 2>/dev/null || true
+      - name: Audit (report-only)
+        run: npm audit --audit-level=high
+        continue-on-error: true

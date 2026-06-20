@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appido-workers
+  namespace: appido
+  labels: { app: appido-workers }
+spec:
+  replicas: 1                      # safe to scale up; outbox relay + repeatable jobs are idempotent
+  selector:
+    matchLabels: { app: appido-workers }
+  template:
+    metadata:
+      labels: { app: appido-workers }
+    spec:
+      containers:
+        - name: workers
+          image: ghcr.io/your-org/appido-backend:latest
+          command: ["node", "services/workers/dist/main.js"]   # override the API CMD
+          envFrom:
+            - configMapRef: { name: appido-config }
+            - secretRef: { name: appido-secrets }
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { cpu: "1", memory: "768Mi" }

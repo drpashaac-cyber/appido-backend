@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: appido-api
+  namespace: appido
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod   # if using cert-manager
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [api.appido.io]
+      secretName: appido-api-tls
+  rules:
+    - host: api.appido.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: appido-api
+                port: { number: 80 }

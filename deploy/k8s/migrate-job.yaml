@@ -1,0 +1,19 @@
+# Run once before/with each release: kubectl apply -f migrate-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: appido-migrate
+  namespace: appido
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ghcr.io/your-org/appido-backend:latest   # your registry/tag
+          command: ["npm", "run", "migrate"]
+          envFrom:
+            - configMapRef: { name: appido-config }
+            - secretRef: { name: appido-secrets }
