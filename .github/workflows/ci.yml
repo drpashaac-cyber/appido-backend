@@ -29,7 +29,7 @@ jobs:
       SECRETS_MASTER_KEY: ci-master-key-32-bytes-minimum-xx
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with: { node-version-file: ".nvmrc", cache: "npm" }
       - run: npm install
       - run: npm run lint
