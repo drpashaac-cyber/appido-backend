@@ -29,7 +29,8 @@
     "seed": "npm run seed -w @appido/db",
     "smoke": "node scripts/smoke.mjs",
     "preflight": "turbo run typecheck && turbo run build",
-    "create-owner": "npm run create-owner -w @appido/db"
+    "create-owner": "npm run create-owner -w @appido/db",
+    "start": "node services/core-api/dist/main.js"
   },
   "devDependencies": {
     "turbo": "^2.3.0",
