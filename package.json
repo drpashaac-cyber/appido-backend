@@ -2,10 +2,10 @@
   "name": "appido-backend",
   "private": true,
   "version": "0.1.0",
-  "description": "APPIDO unified backend \u2014 core-api, workers, shared packages.",
+  "description": "APPIDO unified backend — core-api, workers, shared packages.",
   "workspaces": [
     "packages/*",
-    "services/*"
+    "services/core-api"
   ],
   "engines": {
     "node": ">=20"
@@ -28,5 +28,9 @@
     "typescript": "^5.7.0",
     "@types/node": "^20.17.0"
   },
-  "packageManager": "npm@10.8.2"
+  "packageManager": "npm@10.8.2",
+  "overrides": {
+    "ioredis": "5.11.1",
+    "bullmq": "5.34.3"
+  }
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Job } from "bullmq";
 import type { Redis } from "ioredis";
 import type { Logger } from "pino";

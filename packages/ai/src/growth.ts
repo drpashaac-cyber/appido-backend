@@ -42,12 +42,30 @@ export async function scoreLead(
     max_tokens: 200,
   });
   const text = res.choices[0]?.message?.content ?? "";
-  const raw = parseJsonObject<LeadScore>(text);
+  
+  // --- اصلاح خط 45 شروع ---
+  // اطمینان از اینکه text یک رشته است قبل از ارسال به parseJsonObject
+  let raw: LeadScore | null = null;
+  if (typeof text === 'string') {
+    raw = parseJsonObject<LeadScore>(text);
+  } else {
+    // اگر text از نوع TextPart[] یا هر نوع دیگری بود، آن را به رشته تبدیل می‌کنیم
+    raw = parseJsonObject<LeadScore>(JSON.stringify(text));
+  }
+  // --- اصلاح خط 45 پایان ---
+
+  // --- اصلاح خط 53 (tags) شروع ---
+  let safeTags: string[] = [];
+  if (raw && Array.isArray(raw.tags)) {
+    safeTags = raw.tags.slice(0, 8).map((x) => String(x));
+  }
+  // --- اصلاح خط 53 پایان ---
+
   const result: LeadScore | null = raw
     ? {
         score: Math.max(0, Math.min(100, Math.round(Number(raw.score) || 0))),
         tier: raw.tier === "hot" || raw.tier === "warm" ? raw.tier : "cold",
-        tags: Array.isArray(raw.tags) ? raw.tags.slice(0, 8).map((x) => String(x)) : [],
+        tags: safeTags,
         reason: String(raw.reason ?? "").slice(0, 200),
       }
     : null;
@@ -74,5 +92,16 @@ export async function writeCampaign(
     temperature: 0.6,
     max_tokens: 400,
   });
-  return { body: (res.choices[0]?.message?.content ?? "").trim(), usage: res.usage, model };
+  const content = res.choices[0]?.message?.content ?? "";
+  
+  // --- اصلاح خط 77 شروع ---
+  let safeBody: string;
+  if (typeof content === 'string') {
+    safeBody = content.trim();
+  } else {
+    safeBody = JSON.stringify(content).trim();
+  }
+  // --- اصلاح خط 77 پایان ---
+
+  return { body: safeBody, usage: res.usage, model };
 }

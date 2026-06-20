@@ -67,7 +67,19 @@ export async function runEval(
       })
       .then((r) => r.choices[0]?.message?.content ?? "")
       .catch(() => "");
-    const { score, pass } = parseScore(verdict);
+    
+    // --- اصلاح خط 70 (و 71-72) شروع ---
+    // اطمینان از اینکه محتوای verdict یک رشته است، اگر نباشد، آن را به رشته تبدیل می‌کنیم.
+    let verdictContent: string;
+    if (typeof verdict === 'string') {
+      verdictContent = verdict;
+    } else {
+      // اگر verdict از نوع TextPart[] یا هر نوع دیگری بود، با JSON.stringify آن را به یک رشته تبدیل می‌کنیم.
+      verdictContent = JSON.stringify(verdict);
+    }
+    // --- اصلاح خط 70 (و 71-72) پایان ---
+
+    const { score, pass } = parseScore(verdictContent);
     totalScore += score;
     if (pass) passed++;
     detail.push({ id: gc.id, score, pass });

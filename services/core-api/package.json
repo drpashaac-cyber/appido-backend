@@ -35,7 +35,7 @@
     "class-transformer": "^0.5.1",
     "@appido/telegram": "*",
     "@appido/crypto": "*",
-    "bullmq": "^5.34.0",
+    "bullmq": "^5.34.3",
     "@appido/authz": "*",
     "@nestjs/throttler": "^6.4.0",
     "@appido/ai": "*",
