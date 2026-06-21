@@ -8,10 +8,10 @@ import { LoggerModule } from "nestjs-pino";
 import { loggerOptions } from "./observability/logger";
 import { ConfigModule } from "./config/config.module";
 import { DbModule } from "./db/db.module";
-// import { RedisModule } from "./redis/redis.module"; // <--- کامنت شد
+// import { RedisModule } from "./redis/redis.module";
 import { AuditModule } from "./audit/audit.module";
 import { HealthModule } from "./health/health.module";
-// import { RealtimeModule } from "./realtime/realtime.module"; // <--- کامنت شد
+// import { RealtimeModule } from "./realtime/realtime.module";
 import { AuthModule } from "./auth/auth.module";
 import { ChannelsModule } from "./channels/channels.module";
 import { TenantDataModule } from "./tenant-data/tenant-data.module";
@@ -21,7 +21,7 @@ import { PlansModule } from "./plans/plans.module";
 import { SettingsModule } from "./settings/settings.module";
 import { ScriptModule } from "./script/script.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
-import { QueueModule } from "./queue/queue.module";
+// import { QueueModule } from "./queue/queue.module"; // <--- کامنت شد
 import { CryptoModule } from "./crypto/crypto.module";
 import { TelegramModule } from "./telegram/telegram.module";
 import { AiModule } from "./ai/ai.module";
@@ -44,10 +44,10 @@ import { OpsModule } from "./ops/ops.module";
     LoggerModule.forRoot(loggerOptions),
     ConfigModule,
     DbModule,
-    // RedisModule, // <--- کامنت شد
+    // RedisModule,
     AuditModule,
     HealthModule,
-    // RealtimeModule, // <--- کامنت شد
+    // RealtimeModule,
     AuthModule,
     ChannelsModule,
     TenantDataModule,
@@ -57,7 +57,7 @@ import { OpsModule } from "./ops/ops.module";
     SettingsModule,
     ScriptModule,
     AnalyticsModule,
-    QueueModule,
+    // QueueModule, // <--- کامنت شد
     CryptoModule,
     TelegramModule,
     AiModule,
