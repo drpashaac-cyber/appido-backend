@@ -281,6 +281,9 @@ export class TenantDataService {
       return { ok: true as const, deleted: res[0].id };
     });
   }
+
+  // ---- AI Usage Analytics ----
+  usage(ctx: RlsContext) {
     const since = new Date(Date.now() - 30 * 86_400_000);
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
       const [tot] = await tx
@@ -301,7 +304,6 @@ export class TenantDataService {
         .from(schema.aiUsage)
         .where(gte(schema.aiUsage.at, since))
         .groupBy(schema.aiUsage.model);
-      // Hybrid split — how much work the cheap/local `fast` tier handled vs the `smart` cloud tier.
       const byTier = await tx
         .select({
           tier: schema.aiUsage.tier,
@@ -368,8 +370,8 @@ export class TenantDataService {
       return {
         channels,
         customers: n(customers),
-        gmvUsd: n(gmvCents) / 100, // tenant GMV
-        subscription: sub ? { plan: sub.plan, status: sub.status, periodEnd: sub.periodEnd } : null, // Appido MRR
+        gmvUsd: n(gmvCents) / 100,
+        subscription: sub ? { plan: sub.plan, status: sub.status, periodEnd: sub.periodEnd } : null,
         aiTokens: n(tokens),
       };
     });

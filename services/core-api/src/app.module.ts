@@ -2,8 +2,7 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
-import type { AppConfig } from "@appido/config";
-import { APP_CONFIG } from "./config/config.module";
+import { ConfigService } from "@nestjs/config";
 import { CsrfGuard } from "./security/csrf.guard";
 import { LoggerModule } from "nestjs-pino";
 import { loggerOptions } from "./observability/logger";
@@ -31,15 +30,16 @@ import { BillingModule } from "./billing/billing.module";
 import { GrowthModule } from "./growth/growth.module";
 import { FlywheelModule } from "./flywheel/flywheel.module";
 import { OpsModule } from "./ops/ops.module";
-import { OwnerAnalyticsModule } from "./owner-analytics/owner-analytics.module";
+// import { OwnerAnalyticsModule } from "./owner-analytics/owner-analytics.module"; // <--- کامنت شد
 
 @Module({
   imports: [
     ThrottlerModule.forRootAsync({
-      inject: [APP_CONFIG],
-      useFactory: (config: AppConfig) => ({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
         throttlers: [{ ttl: 60_000, limit: 300 }],
-        storage: new ThrottlerStorageRedisService(config.REDIS_URL), // shared across instances
+        storage: new ThrottlerStorageRedisService(configService.get("REDIS_URL")),
       }),
     }),
     LoggerModule.forRoot(loggerOptions),
@@ -67,7 +67,7 @@ import { OwnerAnalyticsModule } from "./owner-analytics/owner-analytics.module";
     GrowthModule,
     FlywheelModule,
     OpsModule,
-    OwnerAnalyticsModule,
+    // OwnerAnalyticsModule, // <--- کامنت شد
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

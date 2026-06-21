@@ -1,28 +1,25 @@
 import { Controller, Get, Inject, Param, Query, Res } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
-import type { AppConfig } from "@appido/config";
-import { APP_CONFIG } from "../config/config.module";
+import { ConfigService } from "@nestjs/config"; // <--- تغییر
 import { BillingService } from "./billing.service";
 
-// Public gateway return URL for an Appido subscription payment.
 @ApiExcludeController()
 @Controller("billing")
 export class BillingCallbackController {
   constructor(
     private readonly billing: BillingService,
-    @Inject(APP_CONFIG) private readonly config: AppConfig,
+    private readonly configService: ConfigService, // <--- تغییر
   ) {}
 
-  @Get("callback/:subscriptionId")
+  @Get("callback/:transactionId")
   async callback(
-    @Param("subscriptionId") subscriptionId: string,
-    @Query("Authority") authority: string,
-    @Query("Status") status: string,
+    @Param("transactionId") transactionId: string,
+    @Query() query: Record<string, string>,
     @Res() reply: FastifyReply,
   ): Promise<void> {
-    const result = await this.billing.zarinpalCallback(subscriptionId, authority ?? "", status ?? "");
-    const url = `${this.config.PUBLIC_BASE_URL}/billing/result?status=${result.ok ? "ok" : "failed"}&sub=${subscriptionId}`;
+    const result = await this.billing.gatewayCallback(transactionId, query ?? {});
+    const url = `${this.configService.get("PUBLIC_BASE_URL")}/billing/result?status=${result.ok ? "ok" : "failed"}&tx=${transactionId}`;
     await reply.header("location", url).code(302).send();
   }
 }

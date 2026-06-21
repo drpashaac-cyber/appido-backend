@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import "dotenv/config";  // <--- این خط اضافه شد
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";

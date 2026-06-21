@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+// --- تنظیم دستی متغیرهای محیطی (موقت) ---
+process.env.DATABASE_URL = "postgresql://appido:appido@localhost:5432/appido";
+process.env.APP_DATABASE_URL = "postgresql://appido_app:appido_app@localhost:5432/appido";
+process.env.REDIS_URL = "redis://localhost:6379";
+process.env.SECRETS_MASTER_KEY = "ci-master-key-32-bytes-minimum-xx";
+// -----------------------------------------
+
 const bool = (def: boolean) =>
   z.string().optional().transform((v) => (v === undefined ? def : v === "true"));
 

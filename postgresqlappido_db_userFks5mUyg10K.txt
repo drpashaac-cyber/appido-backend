@@ -1,0 +1,1 @@
+postgresql://appido_db_user:Fks5mUyg10KgxgtXJsBjDkfbW85CAB39@dpg-d8r54unavr4c73e432dg-a/appido_db

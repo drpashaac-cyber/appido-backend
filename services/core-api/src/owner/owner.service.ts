@@ -40,8 +40,8 @@ export class OwnerService {
         channels: n(channels),
         customers: n(customers),
         activeSubscriptions: n(activeSubs),
-        mrrUsd: n(mrrCents) / 100, // Appido revenue
-        gmvUsd: n(gmvCents) / 100, // platform-wide tenant sales
+        mrrUsd: n(mrrCents) / 100,
+        gmvUsd: n(gmvCents) / 100,
         aiTokens: n(tokens),
         recentActivity: recent,
       };
@@ -186,3 +186,4 @@ export class OwnerService {
       };
     });
   }
+}
