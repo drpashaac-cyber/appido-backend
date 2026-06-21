@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { ConfigModule, APP_CONFIG } from "../config/config.module"; // <--- APP_CONFIG را هم import کنید
+import { ConfigModule, APP_CONFIG } from "../config/config.module";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { MeController } from "./me.controller";
@@ -15,12 +15,12 @@ import { RolesGuard } from "./roles.guard";
   providers: [
     AuthService,
     PasswordService,
-    {
-      provide: EmailService,
-      inject: [APP_CONFIG],
-      useFactory: (cfg: AppConfig) =>
-        cfg.RESEND_API_KEY ? new ResendEmailService(cfg) : new ConsoleEmailService(),
-    },
+    // {
+    //   provide: EmailService,
+    //   inject: [APP_CONFIG],
+    //   useFactory: (cfg: AppConfig) =>
+    //     cfg.RESEND_API_KEY ? new ResendEmailService(cfg) : new ConsoleEmailService(),
+    // },
     AuthGuard,
     RolesGuard,
   ],
