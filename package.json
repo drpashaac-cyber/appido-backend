@@ -30,7 +30,7 @@
     "smoke": "node scripts/smoke.mjs",
     "preflight": "turbo run typecheck && turbo run build",
     "create-owner": "npm run create-owner -w @appido/db",
-    "start": "tsx services/core-api/src/main.ts"
+    "start": "npx ts-node --transpile-only services/core-api/src/main.ts"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",
