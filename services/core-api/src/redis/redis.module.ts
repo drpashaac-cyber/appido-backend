@@ -12,12 +12,22 @@ export const REDIS_SUB = Symbol("REDIS_SUB");
     {
       provide: REDIS,
       inject: [APP_CONFIG],
-      useFactory: (config: AppConfig): Redis => new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null }),
+      useFactory: (config: AppConfig): Redis => new IORedis(config.REDIS_URL, {
+        maxRetriesPerRequest: null,
+        tls: {},
+        connectTimeout: 10000,
+        retryStrategy: (times: number) => Math.min(times * 100, 3000),
+      }),
     },
     {
       provide: REDIS_SUB,
       inject: [APP_CONFIG],
-      useFactory: (config: AppConfig): Redis => new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null }),
+      useFactory: (config: AppConfig): Redis => new IORedis(config.REDIS_URL, {
+        maxRetriesPerRequest: null,
+        tls: {},
+        connectTimeout: 10000,
+        retryStrategy: (times: number) => Math.min(times * 100, 3000),
+      }),
     },
   ],
   exports: [REDIS, REDIS_SUB],
