@@ -1,0 +1,102 @@
+# Render Blueprint — deploy the APPIDO backend (API + workers + Postgres + Key Value) on every push.
+# Recommended path for a solo founder. Steps + the APP_DATABASE_URL note: see deploy/README.md.
+
+databases:
+  - name: appido-db
+    databaseName: appido
+    postgresMajorVersion: "16"
+    plan: basic-256mb            # bump for production traffic
+    # pgvector + pgcrypto are created by migration 0000 — no extra setup.
+
+envVarGroups:
+  - name: appido-shared          # one source of truth shared by api + workers (must match!)
+    envVars:
+      - key: SECRETS_MASTER_KEY  # generated ONCE here, shared by both services (envelope encryption)
+        generateValue: true
+      - key: APP_DATABASE_URL    # set AFTER first deploy (see README): postgres://appido_app:appido_app@<internal-host>:5432/appido
+        sync: false
+      - key: OWNER_EMAIL
+        sync: false
+      - key: EMAIL_FROM
+        value: APPIDO <no-reply@appido.io>
+      - key: RESEND_API_KEY      # production login/2FA email
+        sync: false
+      - key: LITELLM_BASE_URL
+        sync: false
+      - key: LITELLM_MASTER_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: APPIDO_PAY_METHOD   # Appido's OWN subscription gateway (MRR)
+        value: zarinpal
+      - key: APPIDO_PAY_SECRET
+        sync: false
+      - key: TRON_API_KEY
+        sync: false
+      - key: BSCSCAN_API_KEY
+        sync: false
+      - key: TON_API_KEY
+        sync: false
+
+services:
+  - type: keyvalue
+    name: appido-redis
+    plan: starter                # bump for production
+    ipAllowList: []              # internal-only (no public access)
+    maxmemoryPolicy: noeviction  # CRITICAL: BullMQ queues + outbox must never be evicted
+
+  - type: web
+    name: appido-api
+    runtime: docker
+    dockerfilePath: ./services/core-api/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    preDeployCommand: npm run migrate   # apply DB migrations before the new version serves traffic
+    envVars:
+      - fromGroup: appido-shared
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: appido-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: appido-redis
+          type: keyvalue
+          property: connectionString
+      - key: PUBLIC_BASE_URL     # this service's public URL, e.g. https://appido-api.onrender.com
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_DOMAIN       # e.g. .appido.io (omit/blank if using the onrender.com URL)
+        sync: false
+      - key: CORS_ORIGINS        # the frontends' origins, e.g. https://www.appido.io
+        sync: false
+
+  - type: worker
+    name: appido-workers
+    runtime: docker
+    dockerfilePath: ./services/workers/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - fromGroup: appido-shared
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: appido-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: appido-redis
+          type: keyvalue
+          property: connectionString

@@ -1,0 +1,77 @@
+import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
+import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
+import type { AppConfig } from "@appido/config";
+import { APP_CONFIG } from "./config/config.module";
+import { CsrfGuard } from "./security/csrf.guard";
+import { LoggerModule } from "nestjs-pino";
+import { loggerOptions } from "./observability/logger";
+import { ConfigModule } from "./config/config.module";
+import { DbModule } from "./db/db.module";
+import { RedisModule } from "./redis/redis.module";
+import { AuditModule } from "./audit/audit.module";
+import { HealthModule } from "./health/health.module";
+import { RealtimeModule } from "./realtime/realtime.module";
+import { AuthModule } from "./auth/auth.module";
+import { ChannelsModule } from "./channels/channels.module";
+import { TenantDataModule } from "./tenant-data/tenant-data.module";
+import { InsightsModule } from "./insights/insights.module";
+import { OwnerModule } from "./owner/owner.module";
+import { PlansModule } from "./plans/plans.module";
+import { SettingsModule } from "./settings/settings.module";
+import { ScriptModule } from "./script/script.module";
+import { AnalyticsModule } from "./analytics/analytics.module";
+import { QueueModule } from "./queue/queue.module";
+import { CryptoModule } from "./crypto/crypto.module";
+import { TelegramModule } from "./telegram/telegram.module";
+import { AiModule } from "./ai/ai.module";
+import { PaymentsModule } from "./payments/payments.module";
+import { BillingModule } from "./billing/billing.module";
+import { GrowthModule } from "./growth/growth.module";
+import { FlywheelModule } from "./flywheel/flywheel.module";
+import { OpsModule } from "./ops/ops.module";
+import { OwnerAnalyticsModule } from "./owner-analytics/owner-analytics.module";
+
+@Module({
+  imports: [
+    ThrottlerModule.forRootAsync({
+      inject: [APP_CONFIG],
+      useFactory: (config: AppConfig) => ({
+        throttlers: [{ ttl: 60_000, limit: 300 }],
+        storage: new ThrottlerStorageRedisService(config.REDIS_URL), // shared across instances
+      }),
+    }),
+    LoggerModule.forRoot(loggerOptions),
+    ConfigModule,
+    DbModule,
+    RedisModule,
+    AuditModule,
+    HealthModule,
+    RealtimeModule,
+    AuthModule,
+    ChannelsModule,
+    TenantDataModule,
+    InsightsModule,
+    OwnerModule,
+    PlansModule,
+    SettingsModule,
+    ScriptModule,
+    AnalyticsModule,
+    QueueModule,
+    CryptoModule,
+    TelegramModule,
+    AiModule,
+    PaymentsModule,
+    BillingModule,
+    GrowthModule,
+    FlywheelModule,
+    OpsModule,
+    OwnerAnalyticsModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: CsrfGuard },
+  ],
+})
+export class AppModule {}

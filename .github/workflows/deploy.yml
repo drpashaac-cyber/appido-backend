@@ -1,0 +1,85 @@
+name: Deploy
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/core-api/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+      - name: Trivy image scan (report-only; set exit-code 1 to block)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.push.outputs.digest }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+  deploy:
+    needs: image
+    runs-on: ubuntu-latest
+    environment: production   # add required reviewers in repo Settings → Environments for an approval gate
+    steps:
+      - name: Render — trigger deploy (Render also auto-deploys on push)
+        if: ${{ vars.DEPLOY_TARGET == 'render' }}
+        env:
+          API_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          WORKERS_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_WORKERS }}
+        run: |
+          if [ -n "$API_HOOK" ]; then curl -fsS "$API_HOOK" && echo "api deploy triggered"; else echo "RENDER_DEPLOY_HOOK_API not set"; fi
+          if [ -n "$WORKERS_HOOK" ]; then curl -fsS "$WORKERS_HOOK" && echo "workers deploy triggered"; else echo "RENDER_DEPLOY_HOOK_WORKERS not set"; fi
+      - name: Kubernetes — roll out the new image by digest
+        if: ${{ vars.DEPLOY_TARGET == 'k8s' }}
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+          IMAGE: ghcr.io/${{ github.repository }}@${{ needs.image.outputs.digest }}
+        run: |
+          if [ -z "$KUBE_CONFIG" ]; then echo "KUBE_CONFIG not set — skipping"; exit 0; fi
+          mkdir -p "$HOME/.kube" && echo "$KUBE_CONFIG" | base64 -d > "$HOME/.kube/config"
+          kubectl -n appido set image deployment/appido-api core-api="$IMAGE"
+          kubectl -n appido set image deployment/appido-workers workers="$IMAGE"
+          kubectl -n appido rollout status deployment/appido-api --timeout=180s

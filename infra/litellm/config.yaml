@@ -1,0 +1,62 @@
+# LiteLLM AI gateway — maps APPIDO's logical model names to current provider models.
+# Provider keys come from APPIDO's environment (central), so AI is active with zero tenant work.
+# Per-tenant virtual keys + budgets are created at runtime via the LiteLLM admin API.
+#
+# Model currency (as of June 2026): Anthropic's top WIDELY-AVAILABLE model is Claude Opus 4.8
+# (Fable 5 / Mythos 5 are temporarily export-suspended — do not target them). Sonnet 4.6 is the
+# balanced flagship; Haiku 4.5 is the fast/cheap tier. Confirm the exact gpt/gemini IDs at deploy.
+# These are pinned snapshots — bump them here (one place) as providers release newer versions.
+model_list:
+  # "claude" = the tenant-selectable Claude option AND the `smart` escalation tier (high-intent/VIP).
+  # Default is Sonnet 4.6 (best cost/quality). For maximum close-rate on high-value leads, switch the
+  # line below to anthropic/claude-opus-4-8.
+  - model_name: claude
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+  # Optional max-quality alias — point the `smart` tier here (TIER_MODELS.smart) when you want Opus.
+  - model_name: claude-opus
+    litellm_params:
+      model: anthropic/claude-opus-4-8
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: gpt
+    litellm_params:
+      model: openai/gpt-4.1                # confirm current OpenAI model at deploy
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: gemini
+    litellm_params:
+      model: gemini/gemini-2.5-pro         # confirm current Gemini model at deploy
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: text-embedding-3-small
+    litellm_params:
+      model: openai/text-embedding-3-small
+      api_key: os.environ/OPENAI_API_KEY
+  # `fast` = cheap/high-volume tier for routine replies. Haiku 4.5 keeps quality consistent with the
+  # smart tier; gemini/gemini-2.5-flash is an even-cheaper alternative if you prefer cost over consistency.
+  - model_name: fast
+    litellm_params:
+      model: anthropic/claude-haiku-4-5-20251001
+      api_key: os.environ/ANTHROPIC_API_KEY
+  # Stage 1 (self-host) — flip on when sustained volume crosses the threshold; zero app changes,
+  # just route a tier here. Run vLLM/Ollama serving an open model.
+  # - model_name: local
+  #   litellm_params:
+  #     model: openai/your-local-model
+  #     api_base: http://vllm:8000/v1
+  #     api_key: os.environ/LOCAL_LLM_KEY
+
+litellm_settings:
+  drop_params: true
+  num_retries: 2
+  # Anthropic prompt caching is honored per-request via cache_control on the system prompt (set by the
+  # app) — it cuts cost+latency on the long system/guardrail prefix. The redis cache below is response
+  # caching (safe: each turn carries distinct history, so it rarely collides).
+  cache: true
+  cache_params:
+    type: redis
+    host: redis
+    port: 6379
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL

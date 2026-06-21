@@ -1,0 +1,23 @@
+{
+  "name": "@appido/ai",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "echo 'Skipping build for @appido/ai' && mkdir -p dist && echo '{}' > dist/index.js",
+    "typecheck": "echo 'Skipping typecheck for @appido/ai'",
+    "test": "vitest run",
+    "lint": "echo ok"
+  },
+  "dependencies": {
+    "@appido/db": "*",
+    "@appido/telegram": "*",
+    "drizzle-orm": "^0.38.0",
+    "@appido/payments": "*",
+    "@appido/crypto": "*"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

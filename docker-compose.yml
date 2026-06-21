@@ -1,0 +1,105 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: appido
+      POSTGRES_PASSWORD: appido
+      POSTGRES_DB: appido
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appido"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-appido-master}
+      DATABASE_URL: postgresql://appido:appido@postgres:5432/appido
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes: ["./infra/litellm/config.yaml:/app/config.yaml"]
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports: ["4000:4000"]
+
+  # One-shot: run migrations + seed the owner as the superuser, then exit.
+  migrate:
+    build: { context: ., dockerfile: services/core-api/Dockerfile }
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://appido:appido@postgres:5432/appido
+      REDIS_URL: redis://redis:6379
+      OWNER_EMAIL: ${OWNER_EMAIL:-appido.co@gmail.com}
+    command: ["sh", "-c", "node packages/db/dist/migrate.js && node packages/db/dist/seed.js"]
+    restart: "no"
+
+  core-api:
+    build: { context: ., dockerfile: services/core-api/Dockerfile }
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgresql://appido:appido@postgres:5432/appido
+      APP_DATABASE_URL: postgresql://appido_app:appido_app@postgres:5432/appido
+      REDIS_URL: redis://redis:6379
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-appido-master}
+      SECRETS_MASTER_KEY: ${SECRETS_MASTER_KEY:-change-me-32-bytes-minimum-please}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      TRON_API_KEY: ${TRON_API_KEY:-}
+      BSCSCAN_API_KEY: ${BSCSCAN_API_KEY:-}
+      TON_API_KEY: ${TON_API_KEY:-}
+      # Appido's OWN subscription gateway (MRR). secret is JSON, e.g. {"merchantId":"..."}
+      APPIDO_PAY_METHOD: ${APPIDO_PAY_METHOD:-zarinpal}
+      APPIDO_PAY_SECRET: ${APPIDO_PAY_SECRET:-}
+      OWNER_EMAIL: ${OWNER_EMAIL:-appido.co@gmail.com}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      EMAIL_FROM: ${EMAIL_FROM:-APPIDO <no-reply@appido.io>}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+    ports: ["8080:8080"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  workers:
+    build: { context: ., dockerfile: services/workers/Dockerfile }
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://appido:appido@postgres:5432/appido
+      APP_DATABASE_URL: postgresql://appido_app:appido_app@postgres:5432/appido
+      REDIS_URL: redis://redis:6379
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-appido-master}
+      SECRETS_MASTER_KEY: ${SECRETS_MASTER_KEY:-change-me-32-bytes-minimum-please}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      TRON_API_KEY: ${TRON_API_KEY:-}
+      BSCSCAN_API_KEY: ${BSCSCAN_API_KEY:-}
+      TON_API_KEY: ${TON_API_KEY:-}
+
+volumes:
+  pgdata: {}
