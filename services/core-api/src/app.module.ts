@@ -11,7 +11,7 @@ import { DbModule } from "./db/db.module";
 // import { RedisModule } from "./redis/redis.module"; // <--- کامنت شد
 import { AuditModule } from "./audit/audit.module";
 import { HealthModule } from "./health/health.module";
-import { RealtimeModule } from "./realtime/realtime.module";
+// import { RealtimeModule } from "./realtime/realtime.module"; // <--- کامنت شد
 import { AuthModule } from "./auth/auth.module";
 import { ChannelsModule } from "./channels/channels.module";
 import { TenantDataModule } from "./tenant-data/tenant-data.module";
@@ -30,7 +30,6 @@ import { BillingModule } from "./billing/billing.module";
 import { GrowthModule } from "./growth/growth.module";
 import { FlywheelModule } from "./flywheel/flywheel.module";
 import { OpsModule } from "./ops/ops.module";
-// import { OwnerAnalyticsModule } from "./owner-analytics/owner-analytics.module"; // <--- کامنت شد
 
 @Module({
   imports: [
@@ -48,7 +47,7 @@ import { OpsModule } from "./ops/ops.module";
     // RedisModule, // <--- کامنت شد
     AuditModule,
     HealthModule,
-    RealtimeModule,
+    // RealtimeModule, // <--- کامنت شد
     AuthModule,
     ChannelsModule,
     TenantDataModule,
@@ -67,7 +66,6 @@ import { OpsModule } from "./ops/ops.module";
     GrowthModule,
     FlywheelModule,
     OpsModule,
-    // OwnerAnalyticsModule, // <--- کامنت شد
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
