@@ -4,7 +4,7 @@ import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { MeController } from "./me.controller";
 import { PasswordService } from "./password.service";
-import { EmailService, ConsoleEmailService, ResendEmailService } from "./email.service";
+// import { EmailService, ConsoleEmailService, ResendEmailService } from "./email.service";
 import type { AppConfig } from "@appido/config";
 import { AuthGuard } from "./auth.guard";
 import { RolesGuard } from "./roles.guard";
