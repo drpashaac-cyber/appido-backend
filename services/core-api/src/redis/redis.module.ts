@@ -13,20 +13,34 @@ export const REDIS_SUB = Symbol("REDIS_SUB");
       provide: REDIS,
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig): Redis => new IORedis(config.REDIS_URL, {
-        maxRetriesPerRequest: null,
-        tls: {},
-        connectTimeout: 10000,
-        retryStrategy: (times: number) => Math.min(times * 100, 3000),
+        maxRetriesPerRequest: 5, // کاهش تعداد تلاش‌ها برای تشخیص سریع‌تر خطا
+        tls: {
+          rejectUnauthorized: false, // برای تست و رفع خطاهای TLS
+        },
+        connectTimeout: 20000, // افزایش زمان انتظار برای اتصال
+        retryStrategy: (times: number) => {
+          if (times > 3) {
+            return null; // بعد از ۳ بار تلاش، اتصال را قطع کن
+          }
+          return Math.min(times * 100, 3000);
+        },
       }),
     },
     {
       provide: REDIS_SUB,
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig): Redis => new IORedis(config.REDIS_URL, {
-        maxRetriesPerRequest: null,
-        tls: {},
-        connectTimeout: 10000,
-        retryStrategy: (times: number) => Math.min(times * 100, 3000),
+        maxRetriesPerRequest: 5,
+        tls: {
+          rejectUnauthorized: false,
+        },
+        connectTimeout: 20000,
+        retryStrategy: (times: number) => {
+          if (times > 3) {
+            return null;
+          }
+          return Math.min(times * 100, 3000);
+        },
       }),
     },
   ],
