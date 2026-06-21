@@ -8,7 +8,7 @@ import { LoggerModule } from "nestjs-pino";
 import { loggerOptions } from "./observability/logger";
 import { ConfigModule } from "./config/config.module";
 import { DbModule } from "./db/db.module";
-import { RedisModule } from "./redis/redis.module";
+// import { RedisModule } from "./redis/redis.module"; // <--- کامنت شد
 import { AuditModule } from "./audit/audit.module";
 import { HealthModule } from "./health/health.module";
 import { RealtimeModule } from "./realtime/realtime.module";
@@ -45,7 +45,7 @@ import { OpsModule } from "./ops/ops.module";
     LoggerModule.forRoot(loggerOptions),
     ConfigModule,
     DbModule,
-    RedisModule,
+    // RedisModule, // <--- کامنت شد
     AuditModule,
     HealthModule,
     RealtimeModule,
