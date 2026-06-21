@@ -1,4 +1,10 @@
 {
+<<<<<<< HEAD
+  "dependencies": {
+    "@next/third-parties": "^16.2.9"
+  }
+}
+=======
   "name": "appido-backend",
   "private": true,
   "version": "0.1.0",
@@ -30,7 +36,7 @@
   "smoke": "node scripts/smoke.mjs",
   "preflight": "turbo run typecheck && turbo run build",
   "create-owner": "npm run create-owner -w @appido/db",
-  "start": "npx ts-node services/core-api/src/main.ts"
+  "start": "node services/core-api/dist/main.js"
 },
   "devDependencies": {
     "turbo": "^2.3.0",
@@ -43,3 +49,4 @@
     "bullmq": "5.34.3"
   }
 }
+>>>>>>> d3daaba823a9d6d98cbd1f7bc651c2be82e731eb
