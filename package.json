@@ -1,10 +1,4 @@
 {
-<<<<<<< HEAD
-  "dependencies": {
-    "@next/third-parties": "^16.2.9"
-  }
-}
-=======
   "name": "appido-backend",
   "private": true,
   "version": "0.1.0",
@@ -25,28 +19,34 @@
     "node": ">=20"
   },
   "scripts": {
-  "build": "turbo run build",
-  "dev": "turbo run dev",
-  "typecheck": "turbo run typecheck",
-  "test": "turbo run test",
-  "lint": "turbo run lint",
-  "migrate": "npm run migrate -w @appido/db",
-  "compose:up": "docker compose up --build",
-  "seed": "npm run seed -w @appido/db",
-  "smoke": "node scripts/smoke.mjs",
-  "preflight": "turbo run typecheck && turbo run build",
-  "create-owner": "npm run create-owner -w @appido/db",
-  "start": "node services/core-api/dist/main.js"
-},
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "migrate": "npm run migrate -w @appido/db",
+    "compose:up": "docker compose up --build",
+    "seed": "npm run seed -w @appido/db",
+    "smoke": "node scripts/smoke.mjs",
+    "preflight": "turbo run typecheck && turbo run build",
+    "create-owner": "npm run create-owner -w @appido/db",
+    "start": "node services/core-api/dist/main.js"
+  },
   "devDependencies": {
+    "@types/node": "^20.17.0",
+    "tsx": "^4.22.4",
     "turbo": "^2.3.0",
-    "typescript": "^5.7.0",
-    "@types/node": "^20.17.0"
+    "typescript": "^5.7.0"
   },
   "packageManager": "npm@10.8.2",
   "overrides": {
     "ioredis": "5.11.1",
     "bullmq": "5.34.3"
+  },
+  "dependencies": {
+    "@nestjs/config": "^4.0.4",
+    "@types/pg": "^8.20.0",
+    "dotenv": "^17.4.2",
+    "pg": "^8.22.0"
   }
 }
->>>>>>> d3daaba823a9d6d98cbd1f7bc651c2be82e731eb
