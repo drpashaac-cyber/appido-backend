@@ -1,7 +1,6 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
-import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
 import { ConfigService } from "@nestjs/config";
 import { CsrfGuard } from "./security/csrf.guard";
 import { LoggerModule } from "nestjs-pino";
@@ -21,7 +20,7 @@ import { PlansModule } from "./plans/plans.module";
 import { SettingsModule } from "./settings/settings.module";
 import { ScriptModule } from "./script/script.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
-// import { QueueModule } from "./queue/queue.module"; // <--- کامنت شد
+// import { QueueModule } from "./queue/queue.module";
 import { CryptoModule } from "./crypto/crypto.module";
 import { TelegramModule } from "./telegram/telegram.module";
 import { AiModule } from "./ai/ai.module";
@@ -33,13 +32,8 @@ import { OpsModule } from "./ops/ops.module";
 
 @Module({
   imports: [
-    ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        throttlers: [{ ttl: 60_000, limit: 300 }],
-        storage: new ThrottlerStorageRedisService(configService.get("REDIS_URL")),
-      }),
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60_000, limit: 300 }],
     }),
     LoggerModule.forRoot(loggerOptions),
     ConfigModule,
@@ -57,7 +51,7 @@ import { OpsModule } from "./ops/ops.module";
     SettingsModule,
     ScriptModule,
     AnalyticsModule,
-    // QueueModule, // <--- کامنت شد
+    // QueueModule,
     CryptoModule,
     TelegramModule,
     AiModule,
