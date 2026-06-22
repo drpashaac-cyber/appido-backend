@@ -1,0 +1,31 @@
+﻿services:
+  - type: web
+    name: appido-backend
+    runtime: docker
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: LITELLM_BASE_URL
+        sync: false
+      - key: LITELLM_MASTER_KEY
+        sync: false
+      - key: SECRETS_MASTER_KEY
+        sync: false
+      - key: APP_DATABASE_URL
+        sync: false
+      - key: OWNER_EMAIL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: PUBLIC_BASE_URL
+        value: https://api.appido.io
+    regions:
+      - frankfurt
+    healthCheckPath: /health
