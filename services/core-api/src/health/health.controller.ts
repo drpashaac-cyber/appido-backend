@@ -1,4 +1,4 @@
-import { Controller, Get, Inject } from "@nestjs/common";
+import { Controller, Get, Inject, Optional } from "@nestjs/common";
 import type { Redis } from "ioredis";
 import type { DbHandle } from "@appido/db";
 import { DB } from "../db/db.module";
@@ -8,7 +8,7 @@ import { REDIS } from "../redis/redis.module";
 export class HealthController {
   constructor(
     @Inject(DB) private readonly db: DbHandle,
-    @Inject(REDIS) private readonly redis: Redis,
+    @Optional() @Inject(REDIS) private readonly redis?: Redis,
   ) {}
 
   /** Liveness — process is up. */
@@ -34,6 +34,9 @@ export class HealthController {
   }
 
   private async pingRedis(): Promise<boolean> {
+    if (!this.redis) {
+      return false; // اگر Redis موجود نباشد، false برگردان
+    }
     try {
       return (await this.redis.ping()) === "PONG";
     } catch {
