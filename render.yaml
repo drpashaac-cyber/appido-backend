@@ -18,14 +18,10 @@
         sync: false
       - key: SECRETS_MASTER_KEY
         sync: false
-      - key: APP_DATABASE_URL
-        sync: false
       - key: OWNER_EMAIL
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
+        value: appido.co@gmail.com
       - key: PUBLIC_BASE_URL
-        value: https://api.appido.io
+        value: https://appido-backend.onrender.com
     regions:
       - frankfurt
     healthCheckPath: /health
