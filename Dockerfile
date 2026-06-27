@@ -1,21 +1,13 @@
-﻿# Build stage
-FROM node:20-slim AS builder
+﻿FROM node:20-slim
 
 WORKDIR /app
+
 COPY package*.json ./
-RUN npm ci
+COPY packages ./packages
+COPY services/core-api ./services/core-api
 
-COPY . .
-RUN npm run build
-
-# Production stage
-FROM node:20-slim AS production
-
-WORKDIR /app
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/services/core-api/dist ./services/core-api/dist
-COPY --from=builder /app/packages ./packages
-COPY package*.json ./
+RUN npm install
 
 EXPOSE 8080
+
 CMD ["npm", "run", "start"]
