@@ -8,7 +8,7 @@ import { DB } from "../db/db.module";
 import { SECRET_CIPHER } from "../crypto/crypto.module";
 import { buildPage, clampLimit, cursorToDate, type Page } from "../common/pagination";
 
-const FAR_FUTURE = new Date(8640000000000000);
+const FAR_FUTURE = new Date("2099-12-31T23:59:59.999Z");
 const n = (v: unknown): number => Number(v ?? 0);
 
 type Tx = NodePgDatabase<typeof schema>;
