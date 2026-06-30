@@ -114,6 +114,7 @@ export const channels = pgTable(
     aiLanguages: text("ai_languages").array(),
     aiEnabled: boolean("ai_enabled").notNull().default(true),
     onboardingEnabled: boolean("onboarding_enabled").notNull().default(true), // opt out of the platform onboarding script
+    aiBudgetCents: integer("ai_budget_cents").notNull().default(0), // ← اضافه شد
     aiGuardrails: text("ai_guardrails"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
