@@ -149,14 +149,14 @@ export class OwnerService {
       const since = new Date(Date.now() - 30 * 86_400_000);
       const series = await tx
         .select({
-          day: sql<string>`to_char(date_trunc('day', ${schema.transactions.createdAt}), 'YYYY-MM-DD')`,
+          day: sql<string>`to_char(date_trunc('day', ${schema.transactions.at}), 'YYYY-MM-DD')`,
           currency: schema.transactions.currency,
           cents: sql<number>`coalesce(sum(${schema.transactions.amountCents}),0)::bigint`,
         })
         .from(schema.transactions)
-        .where(and(eq(schema.transactions.status, "ok"), gte(schema.transactions.createdAt, since)))
-        .groupBy(sql`date_trunc('day', ${schema.transactions.createdAt})`, schema.transactions.currency)
-        .orderBy(sql`date_trunc('day', ${schema.transactions.createdAt})`);
+        .where(and(eq(schema.transactions.status, "ok"), gte(schema.transactions.at, since)))
+        .groupBy(sql`date_trunc('day', ${schema.transactions.at})`, schema.transactions.currency)
+        .orderBy(sql`date_trunc('day', ${schema.transactions.at})`);
       return {
         byCurrency: byCurrency.map((r) => ({ currency: r.currency, cents: Number(r.cents) })),
         series: series.map((r) => ({ day: r.day, currency: r.currency, cents: Number(r.cents) })),
