@@ -43,21 +43,23 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();
 
-  // OpenAPI contract + UI at /docs
-  const doc = SwaggerModule.createDocument(
-    app,
-    new DocumentBuilder()
-      .setTitle("APPIDO Core API")
-      .setDescription("Unified backend for landing, tenant dashboard, owner console")
-      .setVersion("0.1")
-      .addCookieAuth("appido_session")
-      .build(),
-  );
-  SwaggerModule.setup("docs", app, doc);
+  if (config.NODE_ENV !== "production") {
+    // OpenAPI contract + UI at /docs for local/dev only.
+    const doc = SwaggerModule.createDocument(
+      app,
+      new DocumentBuilder()
+        .setTitle("APPIDO Core API")
+        .setDescription("Unified backend for landing, tenant dashboard, owner console")
+        .setVersion("0.1")
+        .addCookieAuth("appido_session")
+        .build(),
+    );
+    SwaggerModule.setup("docs", app, doc);
+  }
 
   await app.listen({ port: config.PORT, host: "0.0.0.0" });
   // eslint-disable-next-line no-console
-  console.log(`core-api listening on :${config.PORT} (docs at /docs)`);
+  console.log(`core-api listening on :${config.PORT}`);
 }
 
 void bootstrap();
