@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import {
   LiteLlmClient,
   buildSystemPrompt,
@@ -27,6 +27,11 @@ export interface AiConfigInput {
   enabled?: boolean;
 }
 
+function requireTenant(ctx: RlsContext): string {
+  if (!ctx.tenantId) throw new ServiceUnavailableException("tenant_context_required");
+  return ctx.tenantId;
+}
+
 @Injectable()
 export class AiService {
   private cached?: LiteLlmClient;
@@ -47,10 +52,20 @@ export class AiService {
   }
 
   private async resolveChannel(ctx: RlsContext, channelId?: string) {
+    const tenantId = requireTenant(ctx);
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
       const rows = channelId
-        ? await tx.select().from(schema.channels).where(eq(schema.channels.id, channelId)).limit(1)
-        : await tx.select().from(schema.channels).orderBy(desc(schema.channels.createdAt)).limit(1);
+        ? await tx
+            .select()
+            .from(schema.channels)
+            .where(and(eq(schema.channels.id, channelId), eq(schema.channels.tenantId, tenantId)))
+            .limit(1)
+        : await tx
+            .select()
+            .from(schema.channels)
+            .where(eq(schema.channels.tenantId, tenantId))
+            .orderBy(desc(schema.channels.createdAt))
+            .limit(1);
       if (!rows[0]) throw new NotFoundException("channel_not_found");
       return rows[0];
     });
@@ -70,6 +85,7 @@ export class AiService {
   }
 
   async updateConfig(ctx: RlsContext, input: AiConfigInput) {
+    const tenantId = requireTenant(ctx);
     const ch = await this.resolveChannel(ctx, input.channelId);
     await runWithRls(this.dbh.pool, ctx, (tx) =>
       tx
@@ -82,15 +98,15 @@ export class AiService {
           aiGuardrails: input.guardrails ?? ch.aiGuardrails,
           aiEnabled: input.enabled ?? ch.aiEnabled,
         })
-        .where(eq(schema.channels.id, ch.id)),
+        .where(and(eq(schema.channels.id, ch.id), eq(schema.channels.tenantId, tenantId))),
     );
     return this.getConfig(ctx, ch.id);
   }
 
   async indexKnowledge(ctx: RlsContext, input: { source: "file" | "product"; sourceId?: string; text: string }) {
-    if (!ctx.tenantId) throw new ServiceUnavailableException("tenant_context_required");
+    const tenantId = requireTenant(ctx);
     const chunks = await indexKnowledge(this.dbh.pool, this.client(), {
-      tenantId: ctx.tenantId,
+      tenantId,
       source: input.source,
       sourceId: input.sourceId,
       text: input.text,
@@ -99,10 +115,12 @@ export class AiService {
   }
 
   async listKnowledge(ctx: RlsContext) {
+    const tenantId = requireTenant(ctx);
     return runWithRls(this.dbh.pool, ctx, (tx) =>
       tx
         .select({ id: schema.knowledgeChunks.id, source: schema.knowledgeChunks.source, sourceId: schema.knowledgeChunks.sourceId, createdAt: schema.knowledgeChunks.createdAt })
         .from(schema.knowledgeChunks)
+        .where(eq(schema.knowledgeChunks.tenantId, tenantId))
         .orderBy(desc(schema.knowledgeChunks.createdAt))
         .limit(200),
     );
