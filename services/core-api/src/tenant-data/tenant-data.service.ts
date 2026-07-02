@@ -11,6 +11,11 @@ import { buildPage, clampLimit, cursorToDate, type Page } from "../common/pagina
 const FAR_FUTURE = new Date("2099-12-31T23:59:59.999Z");
 const n = (v: unknown): number => Number(v ?? 0);
 
+function requireTenant(ctx: RlsContext): string {
+  if (!ctx.tenantId) throw new BadRequestException("tenant_context_required");
+  return ctx.tenantId;
+}
+
 type Tx = NodePgDatabase<typeof schema>;
 async function rows<T>(tx: Tx, q: SQL): Promise<T[]> {
   const res = (await tx.execute(q)) as unknown;
@@ -27,13 +32,14 @@ export class TenantDataService {
   ) {}
 
   customers(ctx: RlsContext, limit?: number, cursor?: string): Promise<Page<typeof schema.customers.$inferSelect>> {
+    const tenantId = requireTenant(ctx);
     const lim = clampLimit(limit);
     const cur = cursorToDate(cursor) ?? FAR_FUTURE;
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
       const rows = await tx
         .select()
         .from(schema.customers)
-        .where(lt(schema.customers.createdAt, cur))
+        .where(and(eq(schema.customers.tenantId, tenantId), lt(schema.customers.createdAt, cur)))
         .orderBy(desc(schema.customers.createdAt))
         .limit(lim + 1);
       return buildPage(rows, lim, (r) => r.createdAt);
@@ -41,13 +47,18 @@ export class TenantDataService {
   }
 
   customerDetail(ctx: RlsContext, id: string) {
+    const tenantId = requireTenant(ctx);
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
-      const [customer] = await tx.select().from(schema.customers).where(eq(schema.customers.id, id)).limit(1);
+      const [customer] = await tx
+        .select()
+        .from(schema.customers)
+        .where(and(eq(schema.customers.id, id), eq(schema.customers.tenantId, tenantId)))
+        .limit(1);
       if (!customer) throw new NotFoundException("customer_not_found");
       const timeline = await tx
         .select()
         .from(schema.events)
-        .where(eq(schema.events.customerId, id))
+        .where(and(eq(schema.events.customerId, id), eq(schema.events.tenantId, tenantId)))
         .orderBy(desc(schema.events.at))
         .limit(50);
       return { customer, timeline };
@@ -55,6 +66,7 @@ export class TenantDataService {
   }
 
   products(ctx: RlsContext) {
+    const tenantId = requireTenant(ctx);
     return runWithRls(this.dbh.pool, ctx, (tx) =>
       tx
         .select({
@@ -67,7 +79,7 @@ export class TenantDataService {
           doc: schema.products.doc,
           active: schema.products.active,
           createdAt: schema.products.createdAt,
-          sales: sql<number>`(SELECT count(*)::int FROM transactions tx2 WHERE tx2.product_id = ${schema.products.id} AND tx2.status = 'ok')`,
+          sales: sql<number>`(SELECT count(*)::int FROM transactions tx2 WHERE tx2.product_id = ${schema.products.id} AND tx2.tenant_id = ${tenantId} AND tx2.status = 'ok')`,
         })
         .from(schema.products)
         .orderBy(desc(schema.products.createdAt)),
@@ -75,6 +87,7 @@ export class TenantDataService {
   }
 
   transactions(ctx: RlsContext, limit?: number, cursor?: string) {
+    const tenantId = requireTenant(ctx);
     const lim = clampLimit(limit);
     const cur = cursorToDate(cursor) ?? FAR_FUTURE;
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
@@ -91,8 +104,8 @@ export class TenantDataService {
           at: schema.transactions.at,
         })
         .from(schema.transactions)
-        .leftJoin(schema.customers, eq(schema.customers.id, schema.transactions.customerId))
-        .where(lt(schema.transactions.at, cur))
+        .leftJoin(schema.customers, and(eq(schema.customers.id, schema.transactions.customerId), eq(schema.customers.tenantId, tenantId)))
+        .where(and(eq(schema.transactions.tenantId, tenantId), lt(schema.transactions.at, cur)))
         .orderBy(desc(schema.transactions.at))
         .limit(lim + 1);
       return buildPage(rows, lim, (r) => r.at);
@@ -102,6 +115,7 @@ export class TenantDataService {
   // Conversation list for the inbox/CRM: ONE row per customer (their latest message + key fields),
   // most-recent first. Customers without messages sort last (last=null).
   inbox(ctx: RlsContext, limit?: number) {
+    const tenantId = requireTenant(ctx);
     const lim = clampLimit(limit);
     return runWithRls(this.dbh.pool, ctx, (tx) =>
       rows<{
@@ -125,9 +139,10 @@ export class TenantDataService {
                 c.id AS "customerId", c.name, c.handle, c.tag, c.intent, c.segment,
                 c.ai_managed AS "aiManaged", c.is_vip AS "isVip",
                 m.body AS last, m.author, m.direction, m.at,
-                (SELECT count(*) FROM messages mu WHERE mu.customer_id = c.id AND mu.direction = 'in' AND mu.read_at IS NULL)::int AS unread
+                (SELECT count(*) FROM messages mu WHERE mu.tenant_id = ${tenantId} AND mu.customer_id = c.id AND mu.direction = 'in' AND mu.read_at IS NULL)::int AS unread
               FROM customers c
-              LEFT JOIN messages m ON m.customer_id = c.id
+              LEFT JOIN messages m ON m.customer_id = c.id AND m.tenant_id = ${tenantId}
+              WHERE c.tenant_id = ${tenantId}
               ORDER BY c.id, m.at DESC NULLS LAST
             ) q
             ORDER BY q.at DESC NULLS LAST
@@ -138,6 +153,7 @@ export class TenantDataService {
 
   // Full chat thread for one customer (oldest -> newest) - powers the inbox conversation pane.
   messages(ctx: RlsContext, id: string, limit?: number) {
+    const tenantId = requireTenant(ctx);
     const lim = clampLimit(limit);
     return runWithRls(this.dbh.pool, ctx, (tx) =>
       tx
@@ -149,7 +165,7 @@ export class TenantDataService {
           at: schema.messages.at,
         })
         .from(schema.messages)
-        .where(eq(schema.messages.customerId, id))
+        .where(and(eq(schema.messages.customerId, id), eq(schema.messages.tenantId, tenantId)))
         .orderBy(asc(schema.messages.at))
         .limit(lim),
     );
@@ -157,6 +173,7 @@ export class TenantDataService {
 
   // Operator manual reply: send via the channel's Telegram bot and record it as a human message.
   async sendReply(ctx: RlsContext, customerId: string, text: string) {
+    const tenantId = requireTenant(ctx);
     const body = (text ?? "").trim();
     if (!body) throw new BadRequestException("empty_message");
     if (body.length > 4000) throw new BadRequestException("message_too_long");
@@ -164,14 +181,14 @@ export class TenantDataService {
       const [customer] = await tx
         .select({ tgUserId: schema.customers.tgUserId, channelId: schema.customers.channelId })
         .from(schema.customers)
-        .where(eq(schema.customers.id, customerId))
+        .where(and(eq(schema.customers.id, customerId), eq(schema.customers.tenantId, tenantId)))
         .limit(1);
       if (!customer) throw new NotFoundException("customer_not_found");
       if (!customer.channelId) throw new BadRequestException("customer_has_no_channel");
       const [channel] = await tx
         .select({ botTokenEnc: schema.channels.botTokenEnc })
         .from(schema.channels)
-        .where(eq(schema.channels.id, customer.channelId))
+        .where(and(eq(schema.channels.id, customer.channelId), eq(schema.channels.tenantId, tenantId)))
         .limit(1);
       if (!channel?.botTokenEnc) throw new BadRequestException("channel_not_connected");
       if (customer.tgUserId != null) {
@@ -180,42 +197,49 @@ export class TenantDataService {
       }
       const [row] = await tx
         .insert(schema.messages)
-        .values({ tenantId: ctx.tenantId!, channelId: customer.channelId, customerId, direction: "out", body, author: "human" })
+        .values({ tenantId, channelId: customer.channelId, customerId, direction: "out", body, author: "human" })
         .returning({ id: schema.messages.id, at: schema.messages.at });
-      await tx.insert(schema.events).values({ tenantId: ctx.tenantId!, customerId, type: "message" });
+      await tx.insert(schema.events).values({ tenantId, customerId, type: "message" });
       return { id: row.id, at: row.at, direction: "out", author: "human", body };
     });
   }
 
   // Mark a customer's inbound messages as read (clears the inbox unread badge).
   async markRead(ctx: RlsContext, customerId: string) {
+    const tenantId = requireTenant(ctx);
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
       await tx
         .update(schema.messages)
         .set({ readAt: new Date() })
-        .where(and(eq(schema.messages.customerId, customerId), eq(schema.messages.direction, "in"), sql`${schema.messages.readAt} IS NULL`));
+        .where(and(eq(schema.messages.tenantId, tenantId), eq(schema.messages.customerId, customerId), eq(schema.messages.direction, "in"), sql`${schema.messages.readAt} IS NULL`));
       return { ok: true };
     });
   }
 
   // ---- Per-customer consent (governance) ----
   listConsent(ctx: RlsContext, customerId: string) {
+    const tenantId = requireTenant(ctx);
     return runWithRls(this.dbh.pool, ctx, (tx) =>
       tx
         .select({ purpose: schema.customerConsent.purpose, granted: schema.customerConsent.granted, source: schema.customerConsent.source, at: schema.customerConsent.at })
         .from(schema.customerConsent)
-        .where(eq(schema.customerConsent.customerId, customerId)),
+        .where(and(eq(schema.customerConsent.tenantId, tenantId), eq(schema.customerConsent.customerId, customerId))),
     );
   }
 
   async setConsent(ctx: RlsContext, customerId: string, input: { purpose: string; granted: boolean; source?: string }) {
+    const tenantId = requireTenant(ctx);
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
-      const [cust] = await tx.select({ id: schema.customers.id }).from(schema.customers).where(eq(schema.customers.id, customerId)).limit(1);
+      const [cust] = await tx
+        .select({ id: schema.customers.id })
+        .from(schema.customers)
+        .where(and(eq(schema.customers.id, customerId), eq(schema.customers.tenantId, tenantId)))
+        .limit(1);
       if (!cust) throw new NotFoundException("customer_not_found");
       const source = input.source ?? "operator";
       await tx
         .insert(schema.customerConsent)
-        .values({ tenantId: ctx.tenantId!, customerId, purpose: input.purpose, granted: input.granted, source, at: new Date() })
+        .values({ tenantId, customerId, purpose: input.purpose, granted: input.granted, source, at: new Date() })
         .onConflictDoUpdate({
           target: [schema.customerConsent.tenantId, schema.customerConsent.customerId, schema.customerConsent.purpose],
           set: { granted: input.granted, source, at: new Date() },
@@ -229,28 +253,33 @@ export class TenantDataService {
 
   // DSAR: machine-readable export of everything held about a customer.
   async exportCustomer(ctx: RlsContext, customerId: string) {
+    const tenantId = requireTenant(ctx);
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
-      const [customer] = await tx.select().from(schema.customers).where(eq(schema.customers.id, customerId)).limit(1);
+      const [customer] = await tx
+        .select()
+        .from(schema.customers)
+        .where(and(eq(schema.customers.id, customerId), eq(schema.customers.tenantId, tenantId)))
+        .limit(1);
       if (!customer) throw new NotFoundException("customer_not_found");
       const messages = await tx
         .select({ direction: schema.messages.direction, body: schema.messages.body, author: schema.messages.author, at: schema.messages.at })
         .from(schema.messages)
-        .where(eq(schema.messages.customerId, customerId))
+        .where(and(eq(schema.messages.tenantId, tenantId), eq(schema.messages.customerId, customerId)))
         .orderBy(asc(schema.messages.at));
       const events = await tx
         .select({ type: schema.events.type, amountCents: schema.events.amountCents, currency: schema.events.currency, meta: schema.events.meta, at: schema.events.at })
         .from(schema.events)
-        .where(eq(schema.events.customerId, customerId))
+        .where(and(eq(schema.events.tenantId, tenantId), eq(schema.events.customerId, customerId)))
         .orderBy(asc(schema.events.at));
       const consent = await tx
         .select({ purpose: schema.customerConsent.purpose, granted: schema.customerConsent.granted, source: schema.customerConsent.source, at: schema.customerConsent.at })
         .from(schema.customerConsent)
-        .where(eq(schema.customerConsent.customerId, customerId));
+        .where(and(eq(schema.customerConsent.tenantId, tenantId), eq(schema.customerConsent.customerId, customerId)));
       const transactions = await tx
-        .select({ status: schema.transactions.status, amountCents: schema.transactions.amountCents, currency: schema.transactions.currency, at: schema.transactions.createdAt })
+        .select({ status: schema.transactions.status, amountCents: schema.transactions.amountCents, currency: schema.transactions.currency, at: schema.transactions.at })
         .from(schema.transactions)
-        .where(eq(schema.transactions.customerId, customerId))
-        .orderBy(asc(schema.transactions.createdAt));
+        .where(and(eq(schema.transactions.tenantId, tenantId), eq(schema.transactions.customerId, customerId)))
+        .orderBy(asc(schema.transactions.at));
       return {
         exportedAt: new Date().toISOString(),
         customer: {
@@ -275,8 +304,12 @@ export class TenantDataService {
 
   // Right to erasure: deletes the customer; FK cascades remove messages/events/consent/identities.
   async deleteCustomer(ctx: RlsContext, customerId: string) {
+    const tenantId = requireTenant(ctx);
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
-      const res = await tx.delete(schema.customers).where(eq(schema.customers.id, customerId)).returning({ id: schema.customers.id });
+      const res = await tx
+        .delete(schema.customers)
+        .where(and(eq(schema.customers.id, customerId), eq(schema.customers.tenantId, tenantId)))
+        .returning({ id: schema.customers.id });
       if (!res.length) throw new NotFoundException("customer_not_found");
       return { ok: true as const, deleted: res[0].id };
     });
@@ -293,7 +326,7 @@ export class TenantDataService {
           costMicroUsd: sql<number>`coalesce(sum(${schema.aiUsage.costMicroUsd}),0)::bigint`,
         })
         .from(schema.aiUsage)
-        .where(gte(schema.aiUsage.at, since));
+        .where(and(eq(schema.aiUsage.tenantId, requireTenant(ctx)), gte(schema.aiUsage.at, since)));
       const byModel = await tx
         .select({
           model: schema.aiUsage.model,
@@ -302,7 +335,7 @@ export class TenantDataService {
           costMicroUsd: sql<number>`coalesce(sum(${schema.aiUsage.costMicroUsd}),0)::bigint`,
         })
         .from(schema.aiUsage)
-        .where(gte(schema.aiUsage.at, since))
+        .where(and(eq(schema.aiUsage.tenantId, requireTenant(ctx)), gte(schema.aiUsage.at, since)))
         .groupBy(schema.aiUsage.model);
       const byTier = await tx
         .select({
@@ -313,7 +346,7 @@ export class TenantDataService {
           costMicroUsd: sql<number>`coalesce(sum(${schema.aiUsage.costMicroUsd}),0)::bigint`,
         })
         .from(schema.aiUsage)
-        .where(gte(schema.aiUsage.at, since))
+        .where(and(eq(schema.aiUsage.tenantId, requireTenant(ctx)), gte(schema.aiUsage.at, since)))
         .groupBy(schema.aiUsage.tier);
       return {
         windowDays: 30,
