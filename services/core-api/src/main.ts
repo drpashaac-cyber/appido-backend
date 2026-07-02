@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import "dotenv/config";  // <--- این خط اضافه شد
+import "dotenv/config";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -25,7 +25,20 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(Logger));
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cookie);
-  app.enableCors({ origin: config.CORS_ORIGINS, credentials: true });
+
+  const allowedCorsOrigins = new Set(config.CORS_ORIGINS);
+  app.enableCors({
+    origin: (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, allowedCorsOrigins.has(origin));
+    },
+    credentials: true,
+  });
+
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }));
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();

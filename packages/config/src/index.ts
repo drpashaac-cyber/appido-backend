@@ -1,17 +1,43 @@
 import { z } from "zod";
 
+const DEFAULT_CORS_ORIGINS = [
+  "https://appido.io",
+  "https://www.appido.io",
+  "https://dash.appido.io",
+  "https://dashboard.appido.io",
+];
+
 const bool = (def: boolean) =>
   z.string().optional().transform((v) => (v === undefined ? def : v === "true"));
+
+const corsOrigins = z
+  .string()
+  .optional()
+  .default(DEFAULT_CORS_ORIGINS.join(","))
+  .transform((s): string[] => {
+    const origins = s
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+
+    if (origins.length === 0) {
+      return DEFAULT_CORS_ORIGINS;
+    }
+
+    if (origins.includes("*")) {
+      const explicitOrigins = origins.filter((origin) => origin !== "*");
+      return Array.from(new Set([...DEFAULT_CORS_ORIGINS, ...explicitOrigins]));
+    }
+
+    return Array.from(new Set(origins));
+  });
 
 /** Single source of truth for environment configuration. Fails fast on boot. */
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(8080),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
-  CORS_ORIGINS: z
-    .string()
-    .default("*")
-    .transform((s): true | string[] => (s.trim() === "*" ? true : s.split(",").map((o) => o.trim()))),
+  CORS_ORIGINS: corsOrigins,
 
   // Data
   DATABASE_URL: z.string().url(),
