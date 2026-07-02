@@ -136,7 +136,7 @@ export class TenantDataService {
     );
   }
 
-  // Full chat thread for one customer (oldest → newest) — powers the inbox conversation pane.
+  // Full chat thread for one customer (oldest -> newest) - powers the inbox conversation pane.
   messages(ctx: RlsContext, id: string, limit?: number) {
     const lim = clampLimit(limit);
     return runWithRls(this.dbh.pool, ctx, (tx) =>
@@ -339,6 +339,9 @@ export class TenantDataService {
 
   /** Dashboard overview KPIs. GMV (tenant sales) and MRR (Appido sub) kept separate. */
   dashboardSummary(ctx: RlsContext) {
+    if (!ctx.tenantId) throw new BadRequestException("tenant_context_required");
+    const tenantId = ctx.tenantId;
+
     return runWithRls(this.dbh.pool, ctx, async (tx) => {
       const channels = await tx
         .select({
@@ -351,22 +354,26 @@ export class TenantDataService {
           createdAt: schema.channels.createdAt,
         })
         .from(schema.channels)
+        .where(eq(schema.channels.tenantId, tenantId))
         .orderBy(desc(schema.channels.createdAt));
       const [{ customers }] = await tx
         .select({ customers: sql<number>`count(*)::int` })
-        .from(schema.customers);
+        .from(schema.customers)
+        .where(eq(schema.customers.tenantId, tenantId));
       const [{ gmvCents }] = await tx
         .select({ gmvCents: sql<number>`coalesce(sum(${schema.transactions.amountCents}),0)::bigint` })
         .from(schema.transactions)
-        .where(eq(schema.transactions.status, "ok"));
+        .where(and(eq(schema.transactions.tenantId, tenantId), eq(schema.transactions.status, "ok")));
       const [sub] = await tx
         .select()
         .from(schema.subscriptions)
+        .where(eq(schema.subscriptions.tenantId, tenantId))
         .orderBy(desc(schema.subscriptions.createdAt))
         .limit(1);
       const [{ tokens }] = await tx
         .select({ tokens: sql<number>`coalesce(sum(${schema.aiUsage.tokensIn}) + sum(${schema.aiUsage.tokensOut}),0)::bigint` })
-        .from(schema.aiUsage);
+        .from(schema.aiUsage)
+        .where(eq(schema.aiUsage.tenantId, tenantId));
       return {
         channels,
         customers: n(customers),

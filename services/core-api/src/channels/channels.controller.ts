@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Inject, NotFoundException, Param, Patch, Req, UseGuards } from "@nestjs/common";
 import { IsBoolean, IsIn, IsInt, IsOptional, Min } from "class-validator";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { runWithRls, schema, type DbHandle } from "@appido/db";
 import { DB } from "../db/db.module";
 import { AuthGuard, type AuthedRequest } from "../auth/auth.guard";
@@ -23,6 +23,9 @@ export class ChannelsController {
 
   @Get()
   list(@Req() req: AuthedRequest) {
+    const tenantId = req.user.tenantId;
+    if (!tenantId) throw new BadRequestException("tenant_context_required");
+
     return runWithRls(this.dbh.pool, req.rls, (tx) =>
       tx
         .select({
@@ -37,9 +40,10 @@ export class ChannelsController {
           onboardingEnabled: schema.channels.onboardingEnabled,
           aiBudgetCents: schema.channels.aiBudgetCents,
           createdAt: schema.channels.createdAt,
-          revCents: sql<number>`(SELECT coalesce(sum(amount_cents),0)::bigint FROM transactions tx2 WHERE tx2.channel_id = ${schema.channels.id} AND tx2.status='ok')`,
+          revCents: sql<number>`(SELECT coalesce(sum(amount_cents),0)::bigint FROM transactions tx2 WHERE tx2.channel_id = ${schema.channels.id} AND tx2.tenant_id = ${tenantId} AND tx2.status='ok')`,
         })
         .from(schema.channels)
+        .where(eq(schema.channels.tenantId, tenantId))
         .orderBy(desc(schema.channels.createdAt)),
     );
   }
@@ -50,6 +54,9 @@ export class ChannelsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles("tenant_admin")
   async updateAi(@Req() req: AuthedRequest, @Param("id") id: string, @Body() body: AiConfigDto) {
+    const tenantId = req.user.tenantId;
+    if (!tenantId) throw new BadRequestException("tenant_context_required");
+
     const set: Record<string, unknown> = {};
     if (body.aiModel !== undefined) set.aiModel = body.aiModel;
     if (body.aiEnabled !== undefined) set.aiEnabled = body.aiEnabled;
@@ -60,7 +67,7 @@ export class ChannelsController {
       tx
         .update(schema.channels)
         .set(set)
-        .where(eq(schema.channels.id, id))
+        .where(and(eq(schema.channels.id, id), eq(schema.channels.tenantId, tenantId)))
         .returning({ id: schema.channels.id, aiModel: schema.channels.aiModel, aiEnabled: schema.channels.aiEnabled, aiBudgetCents: schema.channels.aiBudgetCents, onboardingEnabled: schema.channels.onboardingEnabled }),
     );
     if (!rows.length) throw new NotFoundException("channel_not_found");
