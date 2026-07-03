@@ -5,7 +5,7 @@ services:
       POSTGRES_USER: appido
       POSTGRES_PASSWORD: appido
       POSTGRES_DB: appido
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U appido"]
@@ -15,7 +15,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -34,7 +34,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes: ["./infra/litellm/config.yaml:/app/config.yaml"]
     command: ["--config", "/app/config.yaml", "--port", "4000"]
-    ports: ["4000:4000"]
+    ports: ["127.0.0.1:4000:4000"]
 
   # One-shot: run migrations + seed the owner as the superuser, then exit.
   migrate:
