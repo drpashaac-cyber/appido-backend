@@ -14,7 +14,7 @@
     "@appido/db": "*",
     "@appido/crypto": "*",
     "@appido/telegram": "*",
-    "drizzle-orm": "^0.38.0"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "vitest": "^2.1.0"
