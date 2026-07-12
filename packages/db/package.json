@@ -22,7 +22,7 @@
     "@opentelemetry/sdk-node": "0.219.0",
     "drizzle-orm": "^0.45.2",
     "pg": "^8.13.0",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   },
   "devDependencies": {
     "@types/pg": "8.20.0",

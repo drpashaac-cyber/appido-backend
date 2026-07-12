@@ -11,7 +11,7 @@
     "lint": "echo ok"
   },
   "devDependencies": {
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@fastify/static": "9.1.3",
