@@ -99,13 +99,41 @@ async function createCheckoutLink(ctx: ToolContext, productId: string) {
 
 async function grantAccess(ctx: ToolContext) {
   if (ctx.dryRun) return { ok: true, dryRun: true };
+  if (!ctx.customerId) return { error: "customer required" };
   if (!ctx.telegram || !ctx.tgChatId) return { error: "no telegram channel bound" };
+
+  const eligible = await runWithRls(ctx.pool, { platform: false, tenantId: ctx.tenantId }, async (tx) => {
+    const [paid] = await tx
+      .select({ id: schema.transactions.id })
+      .from(schema.transactions)
+      .where(and(
+        eq(schema.transactions.tenantId, ctx.tenantId),
+        eq(schema.transactions.customerId, ctx.customerId!),
+        eq(schema.transactions.status, "ok"),
+      ))
+      .orderBy(desc(schema.transactions.at))
+      .limit(1);
+
+    const [already] = await tx
+      .select({ id: schema.events.id })
+      .from(schema.events)
+      .where(and(
+        eq(schema.events.tenantId, ctx.tenantId),
+        eq(schema.events.customerId, ctx.customerId!),
+        eq(schema.events.type, "access_granted"),
+      ))
+      .limit(1);
+
+    return { paid: !!paid, already: !!already };
+  });
+
+  if (!eligible.paid) return { error: "payment_not_confirmed" };
+  if (eligible.already) return { error: "access_already_granted" };
+
   const link = await ctx.telegram.createChatInviteLink(ctx.tgChatId, { member_limit: 1 });
-  if (ctx.customerId) {
-    await runWithRls(ctx.pool, { platform: false, tenantId: ctx.tenantId }, (tx) =>
-      tx.insert(schema.events).values({ tenantId: ctx.tenantId, customerId: ctx.customerId!, type: "access_granted" }),
-    );
-  }
+  await runWithRls(ctx.pool, { platform: false, tenantId: ctx.tenantId }, (tx) =>
+    tx.insert(schema.events).values({ tenantId: ctx.tenantId, customerId: ctx.customerId!, type: "access_granted" }),
+  );
   return { inviteLink: link.invite_link };
 }
 

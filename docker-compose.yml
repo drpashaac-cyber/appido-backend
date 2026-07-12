@@ -1,4 +1,12 @@
 services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:16686:16686"
+    restart: unless-stopped
+
   postgres:
     image: pgvector/pgvector:pg16
     environment:
@@ -45,6 +53,7 @@ services:
       DATABASE_URL: postgresql://appido:appido@postgres:5432/appido
       REDIS_URL: redis://redis:6379
       OWNER_EMAIL: ${OWNER_EMAIL:-appido.co@gmail.com}
+      APPIDO_AI_ENABLED: ${APPIDO_AI_ENABLED:-true}
     command: ["sh", "-c", "node packages/db/dist/migrate.js && node packages/db/dist/seed.js"]
     restart: "no"
 
@@ -56,14 +65,24 @@ services:
       migrate: { condition: service_completed_successfully }
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: --enable-source-maps --require ./services/core-api/dist/observability/otel-preload.js
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-appido-backend}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.05}
       PORT: 8080
-      DATABASE_URL: postgresql://appido:appido@postgres:5432/appido
-      APP_DATABASE_URL: postgresql://appido_app:appido_app@postgres:5432/appido
+      DATABASE_URL: "postgresql://${APPIDO_RUNTIME_DB_USER:-appido_runtime}:${APPIDO_RUNTIME_DB_PASSWORD:?APPIDO_RUNTIME_DB_PASSWORD_missing}@postgres:5432/appido"
+      APP_DATABASE_URL: "postgresql://${APPIDO_RUNTIME_DB_USER:-appido_runtime}:${APPIDO_RUNTIME_DB_PASSWORD:?APPIDO_RUNTIME_DB_PASSWORD_missing}@postgres:5432/appido"
       REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-appido-core-api}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment=production,service.namespace=appido}
+      APPIDO_AI_ENABLED: ${APPIDO_AI_ENABLED:-true}
       LITELLM_BASE_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-appido-master}
       SECRETS_MASTER_KEY: ${SECRETS_MASTER_KEY:-change-me-32-bytes-minimum-please}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://appido.io,https://www.appido.io,https://dash.appido.io,https://dashboard.appido.io}
       TRON_API_KEY: ${TRON_API_KEY:-}
       BSCSCAN_API_KEY: ${BSCSCAN_API_KEY:-}
       TON_API_KEY: ${TON_API_KEY:-}
@@ -72,9 +91,11 @@ services:
       APPIDO_PAY_SECRET: ${APPIDO_PAY_SECRET:-}
       OWNER_EMAIL: ${OWNER_EMAIL:-appido.co@gmail.com}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-.appido.io}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
       EMAIL_FROM: ${EMAIL_FROM:-APPIDO <no-reply@appido.io>}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
-    ports: ["8080:8080"]
+    ports: ["127.0.0.1:8080:8080"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
@@ -90,13 +111,19 @@ services:
       migrate: { condition: service_completed_successfully }
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://appido:appido@postgres:5432/appido
-      APP_DATABASE_URL: postgresql://appido_app:appido_app@postgres:5432/appido
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-appido-backend}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.05}
+      DATABASE_URL: "postgresql://${APPIDO_RUNTIME_DB_USER:-appido_runtime}:${APPIDO_RUNTIME_DB_PASSWORD:?APPIDO_RUNTIME_DB_PASSWORD_missing}@postgres:5432/appido"
+      APP_DATABASE_URL: "postgresql://${APPIDO_RUNTIME_DB_USER:-appido_runtime}:${APPIDO_RUNTIME_DB_PASSWORD:?APPIDO_RUNTIME_DB_PASSWORD_missing}@postgres:5432/appido"
       REDIS_URL: redis://redis:6379
+      APPIDO_AI_ENABLED: ${APPIDO_AI_ENABLED:-true}
       LITELLM_BASE_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-appido-master}
       SECRETS_MASTER_KEY: ${SECRETS_MASTER_KEY:-change-me-32-bytes-minimum-please}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://appido.io,https://www.appido.io,https://dash.appido.io,https://dashboard.appido.io}
       TRON_API_KEY: ${TRON_API_KEY:-}
       BSCSCAN_API_KEY: ${BSCSCAN_API_KEY:-}
       TON_API_KEY: ${TON_API_KEY:-}

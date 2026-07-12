@@ -1,3 +1,4 @@
+import type { ChatMessage } from "./types";
 import { EMBEDDING_MODEL } from "./models";
 
 export class LiteLlmClient {
@@ -8,7 +9,7 @@ export class LiteLlmClient {
 
   async chat(input: {
     model: string;
-    messages: Array<{ role: string; content: string }>;
+    messages: ChatMessage[];
     temperature?: number;
     max_tokens?: number;
     [key: string]: unknown;

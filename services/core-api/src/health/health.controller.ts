@@ -1,15 +1,11 @@
-import { Controller, Get, Inject, Optional } from "@nestjs/common";
-import type { Redis } from "ioredis";
+import { Controller, Get, Inject } from "@nestjs/common";
+import { Socket } from "node:net";
 import type { DbHandle } from "@appido/db";
 import { DB } from "../db/db.module";
-import { REDIS } from "../redis/redis.module";
 
 @Controller("health")
 export class HealthController {
-  constructor(
-    @Inject(DB) private readonly db: DbHandle,
-    @Optional() @Inject(REDIS) private readonly redis?: Redis,
-  ) {}
+  constructor(@Inject(DB) private readonly db: DbHandle) {}
 
   /** Liveness — process is up. */
   @Get()
@@ -34,13 +30,37 @@ export class HealthController {
   }
 
   private async pingRedis(): Promise<boolean> {
-    if (!this.redis) {
-      return false; // اگر Redis موجود نباشد، false برگردان
-    }
+    let url: URL;
     try {
-      return (await this.redis.ping()) === "PONG";
+      url = new URL(process.env.REDIS_URL || "redis://redis:6379");
     } catch {
       return false;
     }
+
+    const host = url.hostname || "redis";
+    const port = Number(url.port || 6379);
+
+    return new Promise<boolean>((resolve) => {
+      const socket = new Socket();
+      let done = false;
+
+      const finish = (ok: boolean) => {
+        if (done) return;
+        done = true;
+        socket.destroy();
+        resolve(ok);
+      };
+
+      socket.setTimeout(1500);
+      socket.once("connect", () => {
+        socket.write("*1\r\n$4\r\nPING\r\n");
+      });
+      socket.once("data", (buf) => {
+        finish(buf.toString("utf8").includes("PONG"));
+      });
+      socket.once("timeout", () => finish(false));
+      socket.once("error", () => finish(false));
+      socket.connect(port, host);
+    });
   }
 }

@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { Worker, type Job } from "bullmq";
+import { type Job } from "bullmq";
 import IORedis from "ioredis";
 import pino from "pino";
 
@@ -28,8 +28,9 @@ const pub = new IORedis(config.REDIS_URL, {
 const dbh = createDb(config.APP_DATABASE_URL ?? config.DATABASE_URL);
 
 // ---------------- AI ----------------
+const aiEnabled = process.env.APPIDO_AI_ENABLED === "true";
 const aiClient =
-  config.LITELLM_BASE_URL && config.LITELLM_MASTER_KEY
+  aiEnabled && config.LITELLM_BASE_URL && config.LITELLM_MASTER_KEY
     ? new LiteLlmClient(config.LITELLM_BASE_URL, config.LITELLM_MASTER_KEY)
     : null;
 
@@ -46,7 +47,8 @@ const paymentEnv = {
   tonApiKey: config.TON_API_KEY,
 };
 
-if (!aiClient) log.warn("LITELLM not configured — ai-reply jobs will skip");
+if (!aiEnabled) log.warn("APPIDO_AI_ENABLED=false — AI jobs disabled");
+else if (!aiClient) log.warn("LITELLM not configured — ai-reply jobs will skip");
 
 // ---------------- Job defaults ----------------
 const jobDefaults = {

@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
-import { schema, type DbHandle } from "@appido/db";
+import { runWithRls, schema, type DbHandle } from "@appido/db";
 import type { AppConfig } from "@appido/config";
 import type { Me } from "@appido/types";
 import { DB } from "../db/db.module";
@@ -30,12 +30,18 @@ export class AuthService {
     return this.dbh.db;
   }
 
+  private async runAuth<T>(fn: (tx: DbHandle["db"]) => Promise<T>): Promise<T> {
+    return runWithRls(this.dbh.pool, { platform: false, authLookup: true }, fn);
+  }
+
   private async findUserByEmail(email: string) {
-    const rows = await this.db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.email, email.toLowerCase().trim()))
-      .limit(1);
+    const rows = await this.runAuth((db) =>
+      db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.email, email.toLowerCase().trim()))
+        .limit(1),
+    );
     return rows[0] ?? null;
   }
 
@@ -107,18 +113,20 @@ export class AuthService {
       .insert(schema.tenants)
       .values({ name: brand })
       .returning({ id: schema.tenants.id });
-    const [user] = await this.db
-      .insert(schema.users)
-      .values({
-        email,
-        name: (input.name || brand).trim().slice(0, 80),
-        role: "tenant_admin",
-        status: "active",
-        method: "password",
-        passwordHash,
-        tenantId: tenant.id,
-      })
-      .returning({ id: schema.users.id });
+    const [user] = await this.runAuth((db) =>
+      db
+        .insert(schema.users)
+        .values({
+          email,
+          name: (input.name || brand).trim().slice(0, 80),
+          role: "tenant_admin",
+          status: "active",
+          method: "password",
+          passwordHash,
+          tenantId: tenant.id,
+        })
+        .returning({ id: schema.users.id }),
+    );
     return this.createSession(user.id, false);
   }
 
@@ -154,7 +162,9 @@ export class AuthService {
     }
     await this.db.update(schema.loginCodes).set({ consumedAt: new Date() }).where(eq(schema.loginCodes.id, rec.id));
     const passwordHash = await this.passwords.hash(newPassword);
-    await this.db.update(schema.users).set({ passwordHash, method: "password", mustRotate: false }).where(eq(schema.users.id, user.id));
+    await this.runAuth((db) =>
+      db.update(schema.users).set({ passwordHash, method: "password", mustRotate: false }).where(eq(schema.users.id, user.id)),
+    );
     await this.db.delete(schema.sessions).where(eq(schema.sessions.userId, user.id)); // force re-login everywhere
   }
 
@@ -180,7 +190,7 @@ export class AuthService {
       .limit(1);
     const session = rows[0];
     if (!session || session.expiresAt.getTime() < Date.now()) return null;
-    const urows = await this.db.select().from(schema.users).where(eq(schema.users.id, session.userId)).limit(1);
+    const urows = await this.runAuth((db) => db.select().from(schema.users).where(eq(schema.users.id, session.userId)).limit(1));
     const user = urows[0];
     if (!user || user.status !== "active") return null;
     const me: Me = {
@@ -201,9 +211,11 @@ export class AuthService {
   async rotatePassword(userId: string, newPassword: string): Promise<void> {
     if (newPassword.length < 8) throw new BadRequestException("weak_password");
     const passwordHash = await this.passwords.hash(newPassword);
-    await this.db
-      .update(schema.users)
-      .set({ passwordHash, mustRotate: false, method: "password" })
-      .where(eq(schema.users.id, userId));
+    await this.runAuth((db) =>
+      db
+        .update(schema.users)
+        .set({ passwordHash, mustRotate: false, method: "password" })
+        .where(eq(schema.users.id, userId)),
+    );
   }
 }

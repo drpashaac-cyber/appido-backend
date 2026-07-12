@@ -9,11 +9,13 @@ import cookie from "@fastify/cookie";
 import { Logger } from "nestjs-pino";
 import { loadConfig } from "@appido/config";
 import { initOtel } from "./observability/otel";
+import { initSentry } from "./observability/sentry";
 import { AllExceptionsFilter } from "./common/all-exceptions.filter";
 import { AppModule } from "./app.module";
 
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
+  initSentry();
   await initOtel(config);
 
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -23,7 +25,21 @@ async function bootstrap(): Promise<void> {
   );
 
   app.useLogger(app.get(Logger));
-  await app.register(helmet, { contentSecurityPolicy: false });
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        formAction: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        connectSrc: ["'self'"],
+      },
+    },
+  });
   await app.register(cookie);
 
   const allowedCorsOrigins = new Set(config.CORS_ORIGINS);

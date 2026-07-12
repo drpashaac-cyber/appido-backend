@@ -5,6 +5,7 @@ import * as schema from "./schema";
 export interface RlsContext {
   platform: boolean;
   tenantId?: string | null;
+  authLookup?: boolean;
 }
 
 /**
@@ -22,6 +23,7 @@ export async function runWithRls<T>(
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.platform', $1, true)", [ctx.platform ? "on" : "off"]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [ctx.tenantId ?? ""]);
+    await client.query("SELECT set_config('app.auth_lookup', $1, true)", [ctx.authLookup ? "on" : "off"]);
     const tx = drizzle(client, { schema });
     const result = await fn(tx);
     await client.query("COMMIT");

@@ -13,7 +13,8 @@
     "packages/analytics",
     "packages/payments",
     "packages/telegram",
-    "services/core-api"
+    "services/core-api",
+    "services/workers"
   ],
   "engines": {
     "node": ">=20"

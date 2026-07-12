@@ -174,9 +174,10 @@ export function makeGrowthProcessor(
     const botTokenEnc = channel.botTokenEnc;
 
     let criteria: Record<string, unknown> = (c.criteria as Record<string, unknown> | null) ?? {};
-    if (c.segmentId) {
+    const segmentId = c.segmentId;
+    if (segmentId) {
       const [seg] = await runWithRls(dbh.pool, { platform: false, tenantId: data.tenantId }, (tx) =>
-        tx.select({ criteria: schema.segments.criteria }).from(schema.segments).where(eq(schema.segments.id, c.segmentId)).limit(1),
+        tx.select({ criteria: schema.segments.criteria }).from(schema.segments).where(eq(schema.segments.id, segmentId)).limit(1),
       );
       if (seg) criteria = (seg.criteria as Record<string, unknown>) ?? {};
     }

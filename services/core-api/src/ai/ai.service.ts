@@ -41,7 +41,18 @@ export class AiService {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
+  private aiEnabled(): boolean {
+    return process.env.APPIDO_AI_ENABLED === "true";
+  }
+
+  private requireAiEnabled(): void {
+    if (!this.aiEnabled()) {
+      throw new ServiceUnavailableException("ai_disabled");
+    }
+  }
+
   private client(): LiteLlmClient {
+    this.requireAiEnabled();
     if (!this.cached) {
       if (!this.config.LITELLM_BASE_URL || !this.config.LITELLM_MASTER_KEY) {
         throw new ServiceUnavailableException("ai_gateway_not_configured");
@@ -104,6 +115,7 @@ export class AiService {
   }
 
   async indexKnowledge(ctx: RlsContext, input: { source: "file" | "product"; sourceId?: string; text: string }) {
+    this.requireAiEnabled();
     const tenantId = requireTenant(ctx);
     const chunks = await indexKnowledge(this.dbh.pool, this.client(), {
       tenantId,
@@ -137,6 +149,7 @@ export class AiService {
 
   /** Server-side revenue advisor for the dashboard (replaces the client-side call). */
   async advisor(ctx: RlsContext, question: string) {
+    this.requireAiEnabled();
     if (!ctx.tenantId) throw new ServiceUnavailableException("tenant_context_required");
     if (await this.overBudget(ctx.tenantId)) return { answer: "", budgetExceeded: true };
     const [tenant] = await runWithRls(this.dbh.pool, ctx, (tx) =>
@@ -159,6 +172,7 @@ export class AiService {
 
   /** Public marketing-site advisor — no tenant, no metering. Powers the landing support widget. */
   async advisorPublic(question: string, lang?: string) {
+    this.requireAiEnabled();
     const LANGS: Record<string, string> = { en: "English", fa: "Persian (Farsi)", ar: "Arabic", tr: "Turkish", ru: "Russian" };
     const language = LANGS[lang ?? ""] ?? "English";
     const model = modelForTask("advisor");
@@ -177,6 +191,7 @@ export class AiService {
 
   /** Dry-run the agent against a sample inbound message (dashboard playground). */
   async test(ctx: RlsContext, message: string, customerId?: string) {
+    this.requireAiEnabled();
     if (!ctx.tenantId) throw new ServiceUnavailableException("tenant_context_required");
     if (await this.overBudget(ctx.tenantId)) return { reply: "", budgetExceeded: true, steps: 0 };
     const ch = await this.resolveChannel(ctx);
@@ -206,6 +221,7 @@ export class AiService {
     ctx: RlsContext,
     input: { goal: string; audience: string; product?: string; tone?: string; language?: string },
   ): Promise<{ body: string; budgetExceeded: boolean }> {
+    this.requireAiEnabled();
     if (await this.overBudget(ctx.tenantId)) return { body: "", budgetExceeded: true };
     const t0 = Date.now();
     const r = await writeCampaign(this.client(), input);

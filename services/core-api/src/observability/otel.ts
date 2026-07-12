@@ -6,6 +6,8 @@ import type { AppConfig } from "@appido/config";
  */
 export async function initOtel(config: AppConfig): Promise<void> {
   if (!config.OTEL_EXPORTER_OTLP_ENDPOINT) return;
+  const g = globalThis as typeof globalThis & { __APPIDO_OTEL_STARTED__?: boolean };
+  if (g.__APPIDO_OTEL_STARTED__) return;
   try {
     const { NodeSDK } = await import("@opentelemetry/sdk-node");
     const { getNodeAutoInstrumentations } = await import("@opentelemetry/auto-instrumentations-node");
