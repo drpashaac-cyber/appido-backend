@@ -7,7 +7,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json || true; test -f dist/index.js && grep -q LiteLlmClient dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit || true",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"dist/**\"",
     "lint": "echo ok"
   },
   "dependencies": {
