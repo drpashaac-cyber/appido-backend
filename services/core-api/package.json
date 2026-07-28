@@ -8,7 +8,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "start": "node dist/main.js",
     "typecheck": "echo 'Skipping typecheck for @appido/core-api'",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"dist/**\"",
     "lint": "echo ok"
   },
   "dependencies": {
