@@ -109,7 +109,7 @@ export class InsightsService {
       const reached = n(r?.reached);
       const pct = (v: number): number => (reached > 0 ? Math.round((v / reached) * 1000) / 10 : 0);
       const stages: FunnelStage[] = [
-        { stage: "reached", count: reached, pct: 100 },
+        { stage: "reached", count: reached, pct: reached > 0 ? 100 : 0 },
         { stage: "engaged", count: n(r?.engaged), pct: pct(n(r?.engaged)) },
         { stage: "qualified", count: n(r?.qualified), pct: pct(n(r?.qualified)) },
         { stage: "paid", count: n(r?.paid), pct: pct(n(r?.paid)) },
