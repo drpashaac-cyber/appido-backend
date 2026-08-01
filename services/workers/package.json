@@ -19,7 +19,7 @@
     "@appido/payments": "*",
     "@appido/telegram": "*",
     "@appido/types": "*",
-    "bullmq": "^5.34.0",
+    "bullmq": "^5.81.2",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^5.4.0",
     "pino": "^9.5.0"
