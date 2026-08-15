@@ -18,14 +18,14 @@
     "@appido/config": "*",
     "@fastify/static": "9.1.3",
     "@node-rs/argon2": "^2.0.0",
-    "@opentelemetry/auto-instrumentations-node": "0.77.0",
-    "@opentelemetry/sdk-node": "0.219.0",
+    "@opentelemetry/auto-instrumentations-node": "0.79.0",
+    "@opentelemetry/sdk-node": "0.221.0",
     "drizzle-orm": "^0.45.2",
-    "pg": "^8.13.0",
-    "vitest": "4.1.9"
+    "pg": "^8.23.0",
+    "vitest": "4.1.10"
   },
   "devDependencies": {
-    "@types/pg": "8.20.0",
+    "@types/pg": "8.21.0",
     "drizzle-kit": "^0.31.10"
   }
 }
